@@ -1,0 +1,27 @@
+{
+  "name": "wse",
+  "version": "0.0.1",
+  "description": "WebSocked:Enchanced - suspicious wrapper for ws with auth and custom protocol support. This module NOT ready for production!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vovchisko/ws-pimp.git"
+  },
+  "keywords": [
+    "websoket",
+    "ws"
+  ],
+  "author": "Vladimir Ishenko <vovchisko@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vovchisko/ws-pimp/issues"
+  },
+  "homepage": "https://github.com/vovchisko/ws-pimp#readme",
+  "dependencies": {
+    "eventemitter3": "^3.1.0",
+    "ws": "^6.0.0"
+  }
+}
