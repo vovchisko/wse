@@ -1,6 +1,6 @@
 {
   "name": "wse",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "WebSocked:Enchanced - suspicious wrapper for ws with auth and custom protocol support. This module NOT ready for production!",
   "main": "index.js",
   "scripts": {
