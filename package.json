@@ -1,8 +1,9 @@
 {
   "name": "wse",
   "version": "0.0.6",
-  "description": "WebSocked:Enchanced - suspicious wrapper for ws with auth and custom protocol support. This module NOT ready for production!",
-  "main": "index.js",
+  "description": "Suspicious wrapper for ws with auth and custom protocol support.",
+  "main": "node.js",
+  "browser": "browser.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -1,5 +1,5 @@
 const WSEServer = require('./src/server');
-const WSEClient = require('./src/client');
+const wseServer = require('./src/client');
 
 let srv = new WSEServer({
     port: 3334,
@@ -24,7 +24,7 @@ srv.on('leave', (client) => console.log('client.leave!', client.id));
 srv.init();
 
 setTimeout(() => {
-    let client1 = new WSEClient('ws://localhost:3334');
+    let client1 = new wseServer('ws://localhost:3334');
     client1.on('open', () => client1.send('hi', 'ID-1'));
     client1.on('message', (c, dat) => console.log('C1 GOT: ', c, dat));
     client1.on('close', (code, reason) => console.log('C1 CLOSED: ', code, reason));
@@ -32,7 +32,7 @@ setTimeout(() => {
 }, 1000);
 
 setTimeout(() => {
-    let client2 = new WSEClient('ws://localhost:3334');
+    let client2 = new wseServer('ws://localhost:3334');
     client2.on('open', () => client2.send('hi', 'ID-1'));
     client2.on('message', (c, dat) => console.log('C2 GOT: ', c, dat));
     client2.on('close', (code, reason) => console.log('C2 CLOSED: ', code, reason));
@@ -40,7 +40,7 @@ setTimeout(() => {
 }, 2000);
 
 setTimeout(() => {
-    let client3 = new WSEClient('ws://localhost:3334');
+    let client3 = new wseServer('ws://localhost:3334');
     client3.on('open', () => client3.send('hi', 'ID-1'));
     client3.on('message', (c, dat) => console.log('C3 GOT: ', c, dat));
     client3.on('close', (code, reason) => console.log('C3 CLOSED: ', code, reason));

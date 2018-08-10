@@ -2,7 +2,7 @@ const DefaultProtocol = require("./protocol");
 const EventEmitter = require("eventemitter3");
 const WebSocket = require('isomorphic-ws');
 
-class WSEClient extends EventEmitter {
+class wseServer extends EventEmitter {
     constructor(url, protocol = null) {
         super();
 
@@ -42,6 +42,6 @@ class WSEClient extends EventEmitter {
     }
 }
 
-module.exports = WSEClient;
+module.exports = wseServer;
 
 
