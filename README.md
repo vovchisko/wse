@@ -84,8 +84,8 @@ wse.on('message', (client, c, dat) => {
 });
 
 // specific cleint messages
-wse.on('m:pew', (dat) => {
-    console.log('and specific as well... ', dat);
+wse.on('m:pew', (client, dat) => {
+    console.log('and specific as well... ', client.id, dat);
 });
 
 // don't forget about it.
