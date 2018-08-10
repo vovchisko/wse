@@ -37,8 +37,8 @@ class wseServer extends EventEmitter {
         }
     }
 
-    close(reason = 'by-client') {
-        this.wsc.close(1000, reason);
+    close(code=1000, reason = 'by-client') {
+        this.wsc.close(code, reason);
     }
 }
 
