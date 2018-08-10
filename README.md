@@ -1,3 +1,13 @@
+# wse
+Susicious wrapper for WebSocket with autorization and customizable protocol.
+
+**BEWARE!**
+this is a development version, and NOT FOR PRODUCTION! I'm still working on it.
+
+
+```
+// example.js
+
 const WSEServer = require('./src/server');
 const WSEClient = require('./src/client');
 
@@ -24,3 +34,4 @@ let client2 = new WSEClient('ws://localhost:3334');
 client2.on('open', function () {
     client2.send('pew-pew');
 });
+```

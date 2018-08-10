@@ -4,12 +4,10 @@ class DefaultProtocol {
     }
 
     pack(c, dat) {
-        console.log('PACK:', c, dat);
         return JSON.stringify({c: c, dat: dat});
     }
 
     unpack(string) {
-        console.log('UN-PACK:', string);
         return JSON.parse(string);
     }
 }
