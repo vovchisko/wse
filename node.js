@@ -1,1 +1,4 @@
-module.exports = {wseClient: require('./src/client'), wseServer: require('./src/server')};
+module.exports = {
+    WseClient: require('./src/client'),
+    WseServer: require('./src/server')
+};

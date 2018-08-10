@@ -58,9 +58,11 @@ class WSMServer extends EventEmitter {
 
                 if (!msg) return conn.close(1000, 'invalid-protocol');
                 if (conn.valid_stat === CLIENT_VALIDATING) return;
-                if (conn.valid_stat === CLIENT_VALID)
-                    return self.emit('message', self.clients[conn.id], msg.c, msg.dat);
-
+                if (conn.valid_stat === CLIENT_VALID) {
+                    self.emit('m:' + msg.c, self.clients[conn.id], msg.c, msg.dat);
+                    self.emit('message', self.clients[conn.id], msg.c, msg.dat);
+                    return;
+                }
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING;
                     self.auth(msg.c, msg.dat, function (id) {
