@@ -1,1 +1,1 @@
-module.exports = require('./src/client');
+module.exports = {wseClient: require('./src/client')};
