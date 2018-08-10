@@ -55,7 +55,6 @@ const wse = new WseServer({
     port: 4200,
     cpu: 2, // how many clients with the same ID can be connected at the same time
     logging: true, // enable/disable logging
-    protocol: null // custom protocol for packing/unpakcing messages
     auth: (c, dat, is_auth) => {
 
         // first message from user comes calls this function
