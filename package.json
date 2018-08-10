@@ -1,6 +1,6 @@
 {
   "name": "wse",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Suspicious wrapper for ws with auth and custom protocol support.",
   "main": "node.js",
   "browser": "browser.js",
