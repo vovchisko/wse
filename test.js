@@ -16,11 +16,10 @@ let srv = new WSEServer({
 });
 
 
-srv.on('message', (client, e, data) => {
-    console.log('id:', client.id, e, data);
-});
+srv.on('message', (client, e, data) => console.log('id:', client.id, e, data));
 srv.on('connected', (client) => console.log('client.connected', client.conns.length));
 srv.on('leave', (client) => console.log('client.leave!', client.id));
+
 srv.init();
 
 setTimeout(() => {

@@ -4,7 +4,10 @@ class DefaultProtocol {
     }
 
     pack(c, dat) {
-        return JSON.stringify({c: c, dat: dat});
+        return JSON.stringify({
+            c: c,
+            dat: dat
+        });
     }
 
     unpack(string) {
