@@ -19,7 +19,7 @@ const wse_params = {
 
     // auth function. pass client_id (string) or false/null
     // it means user authorized or not.
-    auth: (c, dat, resolve) => {
+    on_auth: (c, dat, resolve) => {
         if (c === 'hi') {
             resolve(dat); //authorized
         } else {

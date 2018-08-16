@@ -29,8 +29,8 @@ class WSMServer extends EventEmitter {
         this.ws_params = ws_params;
 
         this.protocol = params.protocol || new DefaultProtocol();
-        this.auth = params || (() => {
-            throw new Error('auth function not specified!')
+        this.on_auth = params.on_auth || (() => {
+            throw new Error('params.on_auth function not specified!')
         });
 
         extend(this, params);
@@ -68,7 +68,7 @@ class WSMServer extends EventEmitter {
                 }
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING;
-                    self.auth(msg.c, msg.dat, function (id) {
+                    self.on_auth(msg.c, msg.dat, function (id) {
                         if (id) {
                             console.log(msg)
 

@@ -8,9 +8,9 @@ const wse_params = {
     cpu: 1, // how many clients with the same ID can connect
     logging: true, // show console output
 
-    // auth function. pass client_id (string) or false/null
+    // on_auth function. pass client_id (string) or false/null
     // it means user authorized or not.
-    auth: (c, dat, resolve) => {
+    on_auth: (c, dat, resolve) => {
         if (c === 'hi') {
             resolve(dat); //authorized
         } else {
