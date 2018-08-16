@@ -34,6 +34,8 @@ class WSMServer extends EventEmitter {
         });
 
         extend(this, params);
+
+        this.log('configured')
     }
 
     drop_client(id) {
@@ -70,13 +72,12 @@ class WSMServer extends EventEmitter {
                     conn.valid_stat = CLIENT_VALIDATING;
                     self.on_auth(msg.c, msg.dat, function (id) {
                         if (id) {
-                            console.log(msg)
-
                             conn.id = id;
                             conn.valid_stat = CLIENT_VALID;
 
                             if (!self.clients[id]) self.clients[id] = new WSMClientConnection(self, id);
                             let index = self.clients[id].add_conn(conn);
+
                             self.clients[id].send('welcome', {
                                 opened: self.clients[id].conns.length,
                                 i: self.clients[id].conns.indexOf(conn),
@@ -92,19 +93,24 @@ class WSMServer extends EventEmitter {
             conn.on('close', () => {
                 if (conn.id !== null && conn.valid_stat === CLIENT_VALID) {
                     let conn_left = self.clients[conn.id].cleanup();
+
                     if (!conn_left) {
                         self.emit('leave', self.clients[conn.id]);
+                        self.log(conn.id, 'leave');
                         delete self.clients[conn.id];
+                    } else {
+                        self.log(conn.id, 'closed, connections left:', conn_left)
                     }
                 }
             });
             conn.onerror = (e) => {
+                self.log(e);
                 self.emit('error', conn, e.code);
             };
 
         });
 
-        this.log(`init(); cpu:${this.cpu}; ws:`, this.ws_params);
+        this.log(`init(); cpu:${this.cpu};`);
         return self;
     }
 }
@@ -130,6 +136,8 @@ class WSMClientConnection {
                 this.conns[i].close(1000, MSG_OTHER_CLIENT_CONECTED);
         }
 
+        this.wsm.log(this.id, 'connection added. opened:', this.conns.length);
+
         return this.conns.indexOf(conn);
     }
 
@@ -142,7 +150,7 @@ class WSMClientConnection {
     }
 
     drop(reason = 'by-server') {
-        this.wsm.log(this.id, 'drop all connetions. reason:', reason)
+        this.wsm.log(this.id, 'drop all connetions. reason:', reason);
         for (let i = 0; i < this.conns.length; i++) {
             this.conns[i].close(1000, reason)
         }
@@ -154,7 +162,7 @@ class WSMClientConnection {
             if (this.conns[i].readyState === WebSocket.CLOSED) {
                 this.wsm.emit('close', this.conns[i].id, this.conns.length);
                 this.conns.splice(i, 1);
-                this.wsm.log(this.id, 'removed closed connection. yet opened:', this.conns.length);
+                this.wsm.log(this.id, 'closed connection. yet opened:', this.conns.length);
             }
         }
         return this.conns.length;
