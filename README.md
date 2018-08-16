@@ -45,7 +45,7 @@ srv.init(); // ready!
 ```JavaScript
 const WseClient = require('wse').WseClient;
 
-const client1 = new WseClient('ws://localhost:3334', {/*original ws client setting */}, null);
+const client1 = new WseClient('ws://localhost:3334');
 
 client1.on('open', () => client1.send('hi', 'ID-1'));
 client1.on('message', (c, dat) => console.log('C1 GOT: ', c, dat));
@@ -89,7 +89,7 @@ const wse = new WseServer({
 And the same for client:
 ```JavaScript
 const protocol = new MyOwnProtocol(); // use the same class as for server
-const ws = new WseClient('ws://localhost:4200', protocol);
+const ws = new WseClient('ws://localhost:4200', null, null, protocol);
 ```
 
 
