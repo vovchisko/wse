@@ -2,116 +2,63 @@
 Suspicious wrapper for ``ws`` with authorization and customizable protocol. Useful when you talking WS a lot. It looks like original WS, and even smells the same. But a little bit tricky.
 
 **BEWARE! BEWAAAARE!**
-This is package still in development! I DON`T recommend to use it on production.
+This is package still in development! I DON`T recommend to use it on production. It probably working. Probably.
 
+
+#### Server example
+```JavaScript
+// server example
+
+const WseServer = require('wse').WseServer;
+
+// wse params
+const wse_params = {
+    portocol: null, // custom messaging protocol or null - default [ json {c,dat} ]
+    cpu: 1, // how many clients with the same ID can connect
+    logging: true, // show console output
+
+    // auth function. pass client_id (string) or false/null
+    // it means user authorized or not.
+    auth: (c, dat, resolve) => {
+        if (c === 'hi') {
+            resolve(dat); //authorized
+        } else {
+            resolve(null); // nope
+        }
+    }
+};
+
+// original WS params
+const ws_params = {port: 3334};
+
+let srv = new WseServer(wse_params, ws_params);
+
+srv.on('message', (client, e, data) => { console.log('id:', client.id, e, data) });
+srv.on('connected', (client) => console.log('client.connected', client.conns.length));
+srv.on('leave', (client) => console.log('client.leave!', client.id));
+
+srv.init(); // ready!
+
+```
 
 #### Client Example
-```
-import {WseClient} from 'wse';
+```JavaScript
+const WseClient = require('wse').WseClient;
 
-let ws = new WseClient('ws://localhost:4200');
+const client1 = new WseClient('ws://localhost:3334', {/*original ws client setting */}, null);
 
-ws.on('open', () => {
-    // say hi to your server and send something to proove your auth
-    // it can be login/pass pair in data, or api-key
-    ws.send('hi', {id: 'USR_ID_123', api_key: 'whatever...'});
-});
-
-// handle errors
-ws.on('error', (e) => {
-    console.log(e);
-});
-
-// handle connection closing
-ws.on('close', (code, reason) => {
-    console.log(code, reason)
-});
-
-// handle all messages
-ws.on('message', (c, d) => {
-    console.log(c, d)
-});
-
-//handle specific messages
-ws.on('m:specific', (dat) => {
-    console.log('specific message comes', dat);
-});
-
-
-// send messages anywhere you want
-setInterval(() => {
-    ws.send('pew', {pew: Math.random()});
-}, 1000);
-
-```
-
-
-#### Server Example
-```
-const {WseServer} = require('wse');
-
-const wse = new WseServer({
-    name: 'WSE',
-    port: 4200,
-    cpu: 2, // how many clients with the same ID can be connected at the same time
-    logging: true, // enable/disable logging
-    auth: (c, dat, is_auth) => {
-
-        // first message from user comes calls this function
-        // if user didn't said 'hi' - it's not authorized
-        if (c !== 'hi') return is_auth(false);
-
-        // but if he did...
-        console.log('imaginary auth logic here: ', c, dat.api_key);
-
-        let user_id = dat.id;
-
-        // and if all fine - pass some UID to resolve function
-        is_auth(user_id);
-
-    }
-});
-
-// client connected and auth passed
-wse.on('connected', (client) => {
-    console.log('cleint.id = ' + client.id);
-});
-
-// client messages handler
-wse.on('message', (client, c, dat) => {
-    console.log('message: ',client.id, c, dat);
-});
-
-// specific cleint messages
-wse.on('m:pew', (client, dat) => {
-    console.log('and specific as well... ', client.id, dat);
-});
-
-// don't forget about it.
-wse.init();
-
-```
-
-Run both and output should looks like this:
-```
-WSE: init(); port:4200; cpu:2;
-imaginary auth logic here:  hi whatever...
-WSE: USR_ID_123 joined
-cleint.id = USR_ID_123
-message:  USR_ID_123 pew { pew: 0.2987436472862286 }
-message:  USR_ID_123 pew { pew: 0.40504279778762675 }
-message:  USR_ID_123 pew { pew: 0.7377476244540382 }
-message:  USR_ID_123 pew { pew: 0.40869384043631984 }
-message:  USR_ID_123 pew { pew: 0.5172177945917174 }
-message:  USR_ID_123 pew { pew: 0.15122329591774708 }
+client1.on('open', () => client1.send('hi', 'ID-1'));
+client1.on('message', (c, dat) => console.log('C1 GOT: ', c, dat));
+client1.on('close', (code, reason) => console.log('C1 CLOSED: ', code, reason));
+client1.on('error', (e) => console.log('C1 ERR: ', e));
 ```
 
 
 #### Custom / Default Protocol
-You can pass ``Protocol`` object to ``WseServer`` or ``WseClient`` and both uses it's pack/unpack functions to, obviously, pack/unpack messages.
+You can pass ``Protocol`` object to ``WseServer`` or ``WseClient`` constructor, and both uses it's pack/unpack functions to, obviously, pack/unpack messages.
 
 Default one looks like this:
-```
+```JavaScript
 class DefaultProtocol {
     constructor() {
         // not even used :3
@@ -133,14 +80,14 @@ class DefaultProtocol {
 
 But Let's say you don't like JSON. Or you have some strict rules for your messages structure, and want to handle it faster and make it smaller.
 Just pass your own protocol with this functions:
-```
+```JavaScript
 const wse = new WseServer({
     protocol: new MyOwnProtocol() // your own class with pack/unpack functions
 });
 ```
 
 And the same for client:
-```
+```JavaScript
 const protocol = new MyOwnProtocol(); // use the same class as for server
 const ws = new WseClient('ws://localhost:4200', protocol);
 ```

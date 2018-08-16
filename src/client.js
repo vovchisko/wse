@@ -3,12 +3,12 @@ const EventEmitter = require("eventemitter3");
 const WebSocket = require('isomorphic-ws');
 
 class WseServer extends EventEmitter {
-    constructor(url, protocol = null) {
+    constructor(url, ws_params = {}, protocol) {
         super();
 
         this.protocol = protocol || new DefaultProtocol();
 
-        this.ws = new WebSocket(url);
+        this.ws = new WebSocket(url, ws_params);
 
         this.ws.onopen = () => {
             this.emit('open');

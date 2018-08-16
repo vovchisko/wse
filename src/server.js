@@ -15,20 +15,23 @@ const MSG_UNAUTHORIZED = 'unauthorized';
 let WSM_COUNTER = 0;
 
 class WSMServer extends EventEmitter {
-    constructor(params = {}) {
+    constructor(params = {}, ws_params = {}) {
 
         super();
 
-        //default properties
-        this.name = 'WSM-' + ++WSM_COUNTER;
-        this.port = 8081;
-        this.cpu = 1;
         this.clients = {};
-        this.logging = true;
-        this.protocol = new DefaultProtocol();
-        this.auth = () => {
+
+        //default properties
+        this.name = params.name || 'WSM-' + ++WSM_COUNTER;
+        this.cpu = params.cpu || 1;
+        this.logging = params.logging || true;
+
+        this.ws_params = ws_params;
+
+        this.protocol = params.protocol || new DefaultProtocol();
+        this.auth = params || (() => {
             throw new Error('auth function not specified!')
-        };
+        });
 
         extend(this, params);
     }
@@ -44,7 +47,7 @@ class WSMServer extends EventEmitter {
 
     init() {
 
-        this.wss = new WebSocket.Server({port: this.port});
+        this.wss = new WebSocket.Server(this.ws_params);
 
         let self = this;
 
@@ -67,6 +70,8 @@ class WSMServer extends EventEmitter {
                     conn.valid_stat = CLIENT_VALIDATING;
                     self.auth(msg.c, msg.dat, function (id) {
                         if (id) {
+                            console.log(msg)
+
                             conn.id = id;
                             conn.valid_stat = CLIENT_VALID;
 
