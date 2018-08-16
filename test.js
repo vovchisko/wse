@@ -31,16 +31,12 @@ srv.on('leave', (client) => console.log('client.leave!', client.id));
 srv.init(); // ready!
 
 
-
-
-
-
 //clients example
 
 const WseClient = require('./src/client');
 
 setTimeout(() => {
-    let client1 = new WseClient('ws://localhost:3334', {/*original ws client setting */}, null);
+    let client1 = new WseClient('ws://localhost:3334', null/*protocols*/, {/*original ws client setting */}, null);
     client1.on('open', () => client1.send('hi', 'ID-1'));
     client1.on('message', (c, dat) => console.log('C1 GOT: ', c, dat));
     client1.on('close', (code, reason) => console.log('C1 CLOSED: ', code, reason));
@@ -48,7 +44,7 @@ setTimeout(() => {
 }, 1000);
 
 setTimeout(() => {
-    let client2 = new WseClient('ws://localhost:3334', {/*original ws client setting */}, null);
+    let client2 = new WseClient('ws://localhost:3334', null/*protocols*/, {/*original ws client setting */}, null);
     client2.on('open', () => client2.send('hi', 'ID-1'));
     client2.on('message', (c, dat) => console.log('C2 GOT: ', c, dat));
     client2.on('close', (code, reason) => console.log('C2 CLOSED: ', code, reason));
@@ -56,7 +52,7 @@ setTimeout(() => {
 }, 2000);
 
 setTimeout(() => {
-    let client3 = new WseClient('ws://localhost:3334', {/*original ws client setting */}, null);
+    let client3 = new WseClient('ws://localhost:3334', null/*protocols*/, {/*original ws client setting */}, null);
     client3.on('open', () => client3.send('hi', 'ID-1'));
     client3.on('message', (c, dat) => console.log('C3 GOT: ', c, dat));
     client3.on('close', (code, reason) => console.log('C3 CLOSED: ', code, reason));
