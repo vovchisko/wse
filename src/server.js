@@ -24,7 +24,7 @@ class WSMServer extends EventEmitter {
         //default properties
         this.name = params.name || 'WSM-' + ++WSM_COUNTER;
         this.cpu = params.cpu || 1;
-        this.logging = params.logging || true;
+        this.logging = params.logging || false;
 
         this.ws_params = ws_params;
 
