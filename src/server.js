@@ -104,7 +104,7 @@ class WSMServer extends EventEmitter {
 
         });
 
-        this.log(`init(); port:${this.port}; cpu:${this.cpu};`);
+        this.log(`init(); cpu:${this.cpu}; ws:`, this.ws_params);
         return self;
     }
 }
