@@ -1,6 +1,6 @@
-class DefaultProtocol {
+class WseDefaultProtocol {
     constructor() {
-        this.type = 'default/json';
+        this.name = 'wse-default-json';
     }
 
     pack(c, dat) {
@@ -15,4 +15,4 @@ class DefaultProtocol {
     }
 }
 
-module.exports = DefaultProtocol;
+module.exports = WseDefaultProtocol;

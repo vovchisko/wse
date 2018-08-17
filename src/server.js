@@ -2,38 +2,36 @@
 
 const WebSocket = require('ws');
 const EventEmitter = require('eventemitter3');
-const DefaultProtocol = require('./protocol');
-const extend = require('util')._extend;
+const WseDefaultProtocol = require('./protocol');
 
 const CLIENT_NOOB = 0;
 const CLIENT_VALIDATING = 1;
 const CLIENT_VALID = 2;
 
-const MSG_OTHER_CLIENT_CONECTED = 'other-client-connected';
-const MSG_UNAUTHORIZED = 'unauthorized';
+const MSG_OTHER_CLIENT_CONECTED = 'wse-other-client-connected';
+const MSG_UNAUTHORIZED = 'wse-unauthorized';
+const MSG_PROTOCOL_ERR = 'wse-invalid-protocol';
 
 let WSM_COUNTER = 0;
 
 class WSMServer extends EventEmitter {
-    constructor(params = {}, ws_params = {}) {
+    constructor(ws_params = {}, on_auth, wse_protocol = null) {
 
         super();
 
         this.clients = {};
 
         //default properties
-        this.name = params.name || 'WSM-' + ++WSM_COUNTER;
-        this.cpu = params.cpu || 1;
-        this.logging = params.logging || false;
+        this.name = 'WSM-' + ++WSM_COUNTER;
+        this.cpu = 1;
+        this.logging = false;
 
         this.ws_params = ws_params;
 
-        this.protocol = params.protocol || new DefaultProtocol();
-        this.on_auth = params.on_auth || (() => {
+        this.protocol = wse_protocol || new WseDefaultProtocol();
+        this.on_auth = on_auth || (() => {
             throw new Error('params.on_auth function not specified!')
         });
-
-        extend(this, params);
 
         this.log('configured')
     }
@@ -55,13 +53,18 @@ class WSMServer extends EventEmitter {
 
         this.wss.on('connection', function (conn) {
 
+            if (conn.protocol !== self.protocol.name) {
+                console.log(conn);
+                return conn.close(1000, MSG_PROTOCOL_ERR);
+            }
+
             conn.id = null;
             conn.valid_stat = CLIENT_NOOB;
 
             conn.on('message', function (message) {
                 let msg = self.protocol.unpack(message);
 
-                if (!msg) return conn.close(1000, 'invalid-protocol');
+                if (!msg) return conn.close(1000, MSG_PROTOCOL_ERR);
                 if (conn.valid_stat === CLIENT_VALIDATING) return;
                 if (conn.valid_stat === CLIENT_VALID) {
                     self.emit('m:' + msg.c, self.clients[conn.id], msg.dat);
@@ -149,7 +152,7 @@ class WSMClientConnection {
 
     }
 
-    drop(reason = 'by-server') {
+    drop(reason = 'wse-unknown-reason') {
         this.wsm.log(this.id, 'drop all connetions. reason:', reason);
         for (let i = 0; i < this.conns.length; i++) {
             this.conns[i].close(1000, reason)

@@ -1,14 +1,16 @@
-const DefaultProtocol = require("./protocol");
+const WseDefaultProtocol = require("./protocol");
 const EventEmitter = require("eventemitter3");
 const WebSocket = require('isomorphic-ws');
 
 class WseServer extends EventEmitter {
-    constructor(url, protocols, options, messaging_protocol) {
+    constructor(url, options, wse_protocol = null) {
         super();
 
-        this.protocol = messaging_protocol || new DefaultProtocol();
+        this.protocol = wse_protocol || new WseDefaultProtocol();
+        this.url = url;
+        this.options = options;
 
-        this.ws = new WebSocket(url, protocols, options);
+        this.ws = new WebSocket(url, this.protocol.name, this.options);
 
         this.ws.onopen = () => {
             this.emit('open');
