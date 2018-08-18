@@ -16,9 +16,14 @@ srv.logging = true;
 srv.cpu = 1;
 srv.name = 'WSE_TEST_SERVER';
 
-srv.on('message', (client, e, data) => console.log('id:', client.id, e, data));
-srv.on('connected', (client) => console.log('client.connected', client.conns.length));
-srv.on('leave', (client) => console.log('client.leave!', client.id));
+// comes from ws events, but with wse parms.
+srv.on('connection', (client, index) => console.log(' >> connection:', client.id, 'connection', index));
+srv.on('close', (client, code, reason) => console.log(' >> close:', client.id, 'close', code, reason));
+
+srv.on('join', (client) => console.log(' >> join:', client.id));
+srv.on('leave', (client, code, reason) => console.log(' >> leave:', client.id, 'leave!', client.id, code, reason));
+srv.on('message', (client, c, dat) => console.log(' >> message:', client.id, c, dat));
+srv.on('error', (conn, err) => console.log(' >> err:', conn.id, err));
 
 srv.init(); // ready!
 
@@ -28,11 +33,21 @@ srv.init(); // ready!
 const WseClient = require('./src/client');
 
 setTimeout(() => {
-    let client1 = new WseClient('ws://localhost:3334');
-    client1.on('open', () => client1.send('hi', 'ID-1'));
-    client1.on('message', (c, dat) => console.log('C1 GOT: ', c, dat));
-    client1.on('close', (code, reason) => console.log('C1 CLOSED: ', code, reason));
-    client1.on('error', (e) => console.log('C1 ERR: ', e));
+    let client = new WseClient('ws://localhost:3334');
+    client.on('open', () => client.send('hi', 'ID-0'));
+    client.on('message', (c, dat) => console.log('   C0 GOT: ', c, dat));
+    client.on('close', (code, reason) => console.log('   C0 CLOSED: ', code, reason));
+    client.on('error', (e) => console.log('   C0 ERR: ', e));
+    console.log()
+}, 100);
+
+setTimeout(() => {
+    let client = new WseClient('ws://localhost:3334');
+    client.on('open', () => client.send('hi', 'ID-1'));
+    client.on('message', (c, dat) => console.log('   C1 GOT: ', c, dat));
+    client.on('close', (code, reason) => console.log('   C1 CLOSED: ', code, reason));
+    client.on('error', (e) => console.log('   C1 ERR: ', e));
+    console.log()
 }, 1000);
 
 setTimeout(() => {
@@ -40,30 +55,33 @@ setTimeout(() => {
     let bad_protocol = new WseCustomProtocol();
     bad_protocol.name = 'bad_one!';
 
-    let client2 = new WseClient('ws://localhost:3334', null, bad_protocol);
+    let client = new WseClient('ws://localhost:3334', null, bad_protocol);
+    client.on('open', () => client.send('hi', 'ID-2'));
+    client.on('message', (c, dat) => console.log('   C2 GOT: ', c, dat));
+    client.on('close', (code, reason) => console.log('   C2 CLOSED: ', code, reason));
+    client.on('error', (e) => console.log('   C2 ERR: ', e));
+    console.log()
 
-    client2.on('open', () => client2.send('hi', 'ID-1'));
-    client2.on('message', (c, dat) => console.log('C2 GOT: ', c, dat));
-    client2.on('close', (code, reason) => console.log('C2 CLOSED: ', code, reason));
-    client2.on('error', (e) => console.log('C2 ERR: ', e));
 }, 2000);
 
 setTimeout(() => {
-    let client3 = new WseClient('ws://localhost:3334');
-    client3.on('open', () => client3.send('hi', 'ID-1'));
-    client3.on('message', (c, dat) => console.log('C3 GOT: ', c, dat));
-    client3.on('close', (code, reason) => console.log('C3 CLOSED: ', code, reason));
-    client3.on('error', (e) => console.log('C3 ERR: ', e));
-
+    let client = new WseClient('ws://localhost:3334');
+    client.on('open', () => client.send('hi', 'ID-1'));
     setTimeout(() => {
-        client3.send('something-2', {random: Math.random()});
-        client3.close(1000, 'by-custom-reason');
+        client.send('something-2', {random: Math.random()});
+        client.close(1000, 'by-custom-reason');
+        console.log()
 
-    }, 3000);
+    }, 1000);
+    console.log()
+
 }, 3000);
 
 
 setTimeout(() => {
-    srv.drop_client('ID-1');
-    process.exit(0);
-}, 9000);
+    srv.drop_client('ID-0', 'because!');
+    setTimeout(() => {
+        process.exit(0);
+
+    }, 1000);
+}, 5000);

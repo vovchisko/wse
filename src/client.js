@@ -1,14 +1,16 @@
 const WseDefaultProtocol = require("./protocol");
-const EventEmitter = require("eventemitter3");
+const REASON = require("./reason");
+const EE = require("eventemitter3");
 const WebSocket = require('isomorphic-ws');
 
-class WseServer extends EventEmitter {
+class WseServer extends EE {
     constructor(url, options, wse_protocol = null) {
         super();
 
         this.protocol = wse_protocol || new WseDefaultProtocol();
         this.url = url;
         this.options = options;
+        this.message_event_prefix = 'm:';
 
         this.ws = new WebSocket(url, this.protocol.name, this.options);
 
@@ -18,7 +20,7 @@ class WseServer extends EventEmitter {
 
         this.ws.onmessage = (message) => {
             let m = this.protocol.unpack(message.data);
-            this.emit('m:' + m.c, m.dat);
+            this.emit(this.message_event_prefix + m.c, m.dat);
             this.emit('message', m.c, m.dat);
         };
 
@@ -39,7 +41,7 @@ class WseServer extends EventEmitter {
         }
     }
 
-    close(code = 1000, reason = 'by-client') {
+    close(code = 1000, reason = REASON.BY_CLIENT) {
         this.ws.close(code, reason);
     }
 }
