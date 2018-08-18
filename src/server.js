@@ -31,7 +31,7 @@ class WSMServer extends EE {
             throw new Error('params.on_auth function not specified!')
         });
 
-        this.log('configured')
+        this.log('configured');
     }
 
     drop_client(id, reason = REASON.NO_REASON) {
@@ -61,7 +61,6 @@ class WSMServer extends EE {
             conn.on('message', function (message) {
                 let msg = self.protocol.unpack(message);
 
-                console.log(msg);
 
                 if (!msg) return conn.close(1000, REASON.PROTOCOL_ERR);
 
@@ -157,7 +156,6 @@ class WSMClientConnection {
         for (let i = 0; i < this.conns.length; i++) {
             this.conns[i].send(this.wsm.protocol.pack(c, dat));
         }
-
     }
 
     drop(reason = REASON.NO_REASON) {
