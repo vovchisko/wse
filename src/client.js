@@ -10,17 +10,19 @@ class WseServer extends EE {
         this.protocol = wse_protocol || new WseDefaultProtocol();
         this.url = url;
         this.options = options;
-        this.message_event_prefix = 'm:';
+        this.emit_message_enable = false;
+        this.emit_message_prefix = '';
 
         this.ws = new WebSocket(url, this.protocol.name, this.options);
 
-        this.ws.onopen = () => {
-            this.emit('open');
-        };
+        this.ws.onopen = () => this.emit('open');
 
         this.ws.onmessage = (message) => {
             let m = this.protocol.unpack(message.data);
-            this.emit(this.message_event_prefix + m.c, m.dat);
+
+            if (this.emit_message_enable)
+                this.emit(this.emit_message_prefix + m.c, m.dat);
+
             this.emit('message', m.c, m.dat);
         };
 

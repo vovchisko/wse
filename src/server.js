@@ -19,7 +19,9 @@ class WSMServer extends EE {
 
         //default properties
         this.name = 'WSM-' + ++WSM_COUNTER;
-        this.message_event_prefix = 'm:';
+        this.emit_message_enable = false;
+        this.emit_message_prefix = '';
+        this.welcome_message = 'wse-ok';
         this.cpu = 1;
         this.logging = false;
 
@@ -61,12 +63,19 @@ class WSMServer extends EE {
                 let msg = self.protocol.unpack(message);
 
                 if (!msg) return conn.close(1000, REASON.PROTOCOL_ERR);
+
                 if (conn.valid_stat === CLIENT_VALIDATING) return;
+
                 if (conn.valid_stat === CLIENT_VALID) {
-                    self.emit(this.message_event_prefix + msg.c, self.clients[conn.id], msg.dat);
+
+                    if (self.emit_message_enable)
+                        self.emit(this.emit_message_prefix + msg.c, self.clients[conn.id], msg.dat);
+
                     self.emit('message', self.clients[conn.id], msg.c, msg.dat);
+
                     return;
                 }
+
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING;
                     self.on_auth(msg.c, msg.dat, function (id) {
@@ -77,9 +86,9 @@ class WSMServer extends EE {
                             if (!self.clients[id]) self.clients[id] = new WSMClientConnection(self, id);
                             let index = self.clients[id].add_conn(conn);
 
-                            self.clients[id].send('welcome', {
+                            self.clients[id].send(self.welcome_message, {
                                 opened: self.clients[id].conns.length,
-                                i: self.clients[id].conns.indexOf(conn),
+                                index: self.clients[id].conns.indexOf(conn),
                             }, index);
 
                             self.emit('connection', self.clients[id], index);
