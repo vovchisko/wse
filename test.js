@@ -34,7 +34,8 @@ const WseClient = require('./src/client');
 
 setTimeout(() => {
     let client = new WseClient('ws://localhost:3334');
-    client.on('open', () => client.send('hi', 'ID-0'));
+    client.connect('C0');
+    client.on('open', (dat) => console.log('    C0 - hi', dat));
     client.on('message', (c, dat) => console.log('   C0 GOT: ', c, dat));
     client.on('close', (code, reason) => console.log('   C0 CLOSED: ', code, reason));
     client.on('error', (e) => console.log('   C0 ERR: ', e));
@@ -43,7 +44,8 @@ setTimeout(() => {
 
 setTimeout(() => {
     let client = new WseClient('ws://localhost:3334');
-    client.on('open', () => client.send('hi', 'ID-1'));
+    client.connect('C1');
+    client.on('open', (dat) => console.log('    C1 - hi', dat));
     client.on('message', (c, dat) => console.log('   C1 GOT: ', c, dat));
     client.on('close', (code, reason) => console.log('   C1 CLOSED: ', code, reason));
     client.on('error', (e) => console.log('   C1 ERR: ', e));
@@ -56,7 +58,8 @@ setTimeout(() => {
     bad_protocol.name = 'bad_one!';
 
     let client = new WseClient('ws://localhost:3334', null, bad_protocol);
-    client.on('open', () => client.send('hi', 'ID-2'));
+    client.connect('C2');
+    client.on('open', (dat) => console.log('    C2 - hi', dat));
     client.on('message', (c, dat) => console.log('   C2 GOT: ', c, dat));
     client.on('close', (code, reason) => console.log('   C2 CLOSED: ', code, reason));
     client.on('error', (e) => console.log('   C2 ERR: ', e));
@@ -66,9 +69,10 @@ setTimeout(() => {
 
 setTimeout(() => {
     let client = new WseClient('ws://localhost:3334');
-    client.on('open', () => client.send('hi', 'ID-1'));
+    client.connect('C3');
+    client.on('open', (dat) => console.log('    C3 - hi', dat));
     setTimeout(() => {
-        client.send('something-2', {random: Math.random()});
+        client.send('something-333', {random: Math.random()});
         client.close(1000, 'by-custom-reason');
         console.log()
 

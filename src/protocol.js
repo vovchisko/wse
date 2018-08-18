@@ -1,6 +1,7 @@
 class WseDefaultProtocol {
     constructor() {
         this.name = 'wse-default-json';
+        this.welcome_message = 'hi';
     }
 
     pack(c, dat) {

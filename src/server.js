@@ -21,7 +21,6 @@ class WSMServer extends EE {
         this.name = 'WSM-' + ++WSM_COUNTER;
         this.emit_message_enable = false;
         this.emit_message_prefix = '';
-        this.welcome_message = 'wse-ok';
         this.cpu = 1;
         this.logging = false;
 
@@ -86,7 +85,7 @@ class WSMServer extends EE {
                             if (!self.clients[id]) self.clients[id] = new WSMClientConnection(self, id);
                             let index = self.clients[id].add_conn(conn);
 
-                            self.clients[id].send(self.welcome_message, {
+                            self.clients[id].send(self.protocol.welcome_message, {
                                 opened: self.clients[id].conns.length,
                                 index: self.clients[id].conns.indexOf(conn),
                             }, index);

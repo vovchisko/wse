@@ -13,27 +13,40 @@ class WseServer extends EE {
         this.emit_message_enable = false;
         this.emit_message_prefix = '';
 
-        this.ws = new WebSocket(url, this.protocol.name, this.options);
-
-        this.ws.onopen = () => this.emit('open');
-
-        this.ws.onmessage = (message) => {
-            let m = this.protocol.unpack(message.data);
-
-            if (this.emit_message_enable)
-                this.emit(this.emit_message_prefix + m.c, m.dat);
-
-            this.emit('message', m.c, m.dat);
-        };
-
-        this.ws.onerror = (e) => {
-            this.emit('error', e);
-        };
-
-        this.ws.onclose = (event) => {
-            this.emit('close', event.code, event.reason);
-        };
+        this.reused = 0;
     }
+
+    connect(payload) {
+        this.reused++;
+
+        this.ws = new WebSocket(this.url, this.protocol.name, this.options);
+        this.ws.onopen = () => this.send(this.protocol.welcome_message, payload);
+        this.ws.onmessage = (m) => this._before_welcome(m);
+        this.ws.onerror = (e) => this.emit('error', e);
+        this.ws.onclose = (event) => this.emit('close', event.code, event.reason);
+
+        return this;
+    }
+
+    _before_welcome(message) {
+        let m = this.protocol.unpack(message.data);
+
+        if (m.c === this.protocol.welcome_message) {
+            this.emit('open', m.dat); //for capability
+            this.emit(this.protocol.welcome_message, m.dat);
+        }
+
+        this.ws.onmessage = (m) => this._data(m);
+    }
+
+    _data(message) {
+        let m = this.protocol.unpack(message.data);
+
+        if (this.emit_message_enable)
+            this.emit(this.emit_message_prefix + m.c, m.dat);
+
+        this.emit('message', m.c, m.dat);
+    };
 
     send(c, dat) {
         if (this.ws.readyState === WebSocket.OPEN) {
