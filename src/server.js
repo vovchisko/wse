@@ -85,7 +85,7 @@ class WSMServer extends EE {
                             if (!self.clients[id]) self.clients[id] = new WSMClientConnection(self, id);
                             let index = self.clients[id].add_conn(conn);
 
-                            self.clients[id].send(self.protocol.welcome_message, {
+                            self.clients[id].send(self.protocol.hi, {
                                 opened: self.clients[id].conns.length,
                                 index: self.clients[id].conns.indexOf(conn),
                             }, index);

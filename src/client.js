@@ -20,7 +20,7 @@ class WseServer extends EE {
         this.reused++;
 
         this.ws = new WebSocket(this.url, this.protocol.name, this.options);
-        this.ws.onopen = () => this.send(this.protocol.welcome_message, payload);
+        this.ws.onopen = () => this.send(this.protocol.hi, payload);
         this.ws.onmessage = (m) => this._before_welcome(m);
         this.ws.onerror = (e) => this.emit('error', e);
         this.ws.onclose = (event) => this.emit('close', event.code, event.reason);
@@ -31,9 +31,9 @@ class WseServer extends EE {
     _before_welcome(message) {
         let m = this.protocol.unpack(message.data);
 
-        if (m.c === this.protocol.welcome_message) {
+        if (m.c === this.protocol.hi) {
             this.emit('open', m.dat); //for capability
-            this.emit(this.protocol.welcome_message, m.dat);
+            this.emit(this.protocol.hi, m.dat);
         }
 
         this.ws.onmessage = (m) => this._data(m);
