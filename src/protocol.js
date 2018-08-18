@@ -1,7 +1,7 @@
 class WseDefaultProtocol {
     constructor() {
         this.name = 'wse-default-json';
-        this.hi = 'hi';
+        this.hi = 'hello';
     }
 
     pack(c, dat) {
