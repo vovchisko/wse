@@ -10,8 +10,8 @@ class WseServer extends EE {
         this.protocol = wse_protocol || new WseDefaultProtocol();
         this.url = url;
         this.options = options;
-        this.emit_message_enable = false;
-        this.emit_message_prefix = '';
+        this.emit_message_enable = true;
+        this.emit_message_prefix = 'm:';
 
         this.reused = 0;
     }
