@@ -36,7 +36,7 @@ class WseServer extends EE {
             this.emit(this.protocol.hi, m.dat);
         }
 
-        this.ws.onmessage = (m) => this._data(m);
+        this.ws.onmessage = (msg) => this._data(msg);
     }
 
     _data(message) {

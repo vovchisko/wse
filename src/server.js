@@ -61,6 +61,8 @@ class WSMServer extends EE {
             conn.on('message', function (message) {
                 let msg = self.protocol.unpack(message);
 
+                console.log(msg);
+
                 if (!msg) return conn.close(1000, REASON.PROTOCOL_ERR);
 
                 if (conn.valid_stat === CLIENT_VALIDATING) return;
@@ -77,7 +79,7 @@ class WSMServer extends EE {
 
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING;
-                    self.on_auth(msg.c, msg.dat, function (id) {
+                    self.on_auth(msg.dat, function (id) {
                         if (id) {
                             conn.id = id;
                             conn.valid_stat = CLIENT_VALID;

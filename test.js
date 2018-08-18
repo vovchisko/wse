@@ -3,12 +3,8 @@
 const WseServer = require('./src/server');
 const WseCustomProtocol = require('./src/protocol');
 
-function on_auth(c, dat, resolve) {
-    if (c === 'hi') {
-        resolve(dat); //authorized
-    } else {
-        resolve(null); // nope
-    }
+function on_auth(dat, resolve) {
+    resolve(dat); //authorized by used ID
 }
 
 let srv = new WseServer({port: 3334}, on_auth);
