@@ -6,45 +6,43 @@ const WebSocket = require('isomorphic-ws');
 class WseServer extends EE {
     constructor(url, options, wse_protocol = null) {
         super();
-
+        this.is_online = false;
         this.protocol = wse_protocol || new WseDefaultProtocol();
         this.url = url;
         this.options = options;
         this.emit_message_enable = true;
         this.emit_message_prefix = 'm:';
-
         this.reused = 0;
     }
 
     connect(payload) {
         this.reused++;
-
+        this.is_online = null;
         this.ws = new WebSocket(this.url, this.protocol.name, this.options);
         this.ws.onopen = () => this.send(this.protocol.hi, payload);
         this.ws.onmessage = (m) => this._before_welcome(m);
         this.ws.onerror = (e) => this.emit('error', e);
-        this.ws.onclose = (event) => this.emit('close', event.code, event.reason);
-
+        this.ws.onclose = (event) => {
+            this.is_online = false;
+            this.emit('close', event.code, event.reason);
+        };
         return this;
     }
 
     _before_welcome(message) {
         let m = this.protocol.unpack(message.data);
-
+        this.is_online = true;
         if (m.c === this.protocol.hi) {
             this.emit('open', m.dat); //for capability
             this.emit(this.protocol.hi, m.dat);
         }
-
         this.ws.onmessage = (msg) => this._data(msg);
     }
 
     _data(message) {
         let m = this.protocol.unpack(message.data);
-
         if (this.emit_message_enable)
             this.emit(this.emit_message_prefix + m.c, m.dat);
-
         this.emit('message', m.c, m.dat);
     };
 
