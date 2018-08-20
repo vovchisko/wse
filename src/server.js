@@ -9,9 +9,9 @@ const CLIENT_NOOB = 0;
 const CLIENT_VALIDATING = 1;
 const CLIENT_VALID = 2;
 
-let WSM_COUNTER = 0;
+let WSE_COUNTER = 0;
 
-class WSMServer extends EE {
+class WseServer extends EE {
     constructor(ws_params = {}, on_auth, wse_protocol = null) {
 
         super();
@@ -19,7 +19,7 @@ class WSMServer extends EE {
         this.clients = {};
 
         //default properties
-        this.name = 'WSE-' + ++WSM_COUNTER;
+        this.name = 'WSE-' + ++WSE_COUNTER;
         this.emit_message_enable = false;
         this.emit_message_prefix = '';
 
@@ -95,7 +95,7 @@ class WSMServer extends EE {
                             }
 
                             console.log('creating new...');
-                            self.clients[id] = new WSMClientConnection(self, conn);
+                            self.clients[id] = new WseClientConnection(self, conn);
                             self.clients[id].send(self.protocol.hi);
 
                             self.emit('join', self.clients[id]);
@@ -131,9 +131,9 @@ class WSMServer extends EE {
     }
 }
 
-class WSMClientConnection {
+class WseClientConnection {
     /**
-     * @param {WSMServer} parent_wsm - wsm instance
+     * @param {WseServer} parent_wsm - wsm instance
      * @param {WebSocket} conn - ws connection
      */
     constructor(parent_wsm, conn) {
@@ -152,4 +152,4 @@ class WSMClientConnection {
     }
 }
 
-module.exports = WSMServer;
+module.exports = WseServer;

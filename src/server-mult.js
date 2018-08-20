@@ -8,9 +8,9 @@ const CLIENT_NOOB = 0;
 const CLIENT_VALIDATING = 1;
 const CLIENT_VALID = 2;
 
-let WSM_COUNTER = 0;
+let WSE_COUNTER = 0;
 
-class WSMServerMult extends EE {
+class WseServerMult extends EE {
     constructor(ws_params = {}, on_auth, wse_protocol = null) {
 
         super();
@@ -18,7 +18,7 @@ class WSMServerMult extends EE {
         this.clients = {};
 
         //default properties
-        this.name = 'WSE/M-' + ++WSM_COUNTER;
+        this.name = 'WSE/M-' + ++WSE_COUNTER;
         this.emit_message_enable = false;
         this.emit_message_prefix = '';
         this.cpu = 2;
@@ -92,7 +92,7 @@ class WSMServerMult extends EE {
 
                             if (!self.clients[id]) {
                                 is_new = true;
-                                self.clients[id] = new WSMClientConnection(self, id);
+                                self.clients[id] = new WseClientConnection(self, id);
                             }
 
                             let index = self.clients[id].add_conn(conn);
@@ -142,9 +142,9 @@ class WSMServerMult extends EE {
     }
 }
 
-class WSMClientConnection {
+class WseClientConnection {
     /**
-     * @param {WSMServerMult} parent_wsm - wsm instance
+     * @param {WseServerMult} parent_wsm - wsm instance
      * @param {id} id - connection
      */
     constructor(parent_wsm, id) {
@@ -193,4 +193,4 @@ class WSMClientConnection {
 
 }
 
-module.exports = WSMServerMult;
+module.exports = WseServerMult;

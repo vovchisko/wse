@@ -1,6 +1,6 @@
 // server example
 
-const WseServer = require('./src/server-mult');
+const WseServer = require('./src/server');
 const WseCustomProtocol = require('./src/protocol');
 
 function on_auth(dat, resolve) {
