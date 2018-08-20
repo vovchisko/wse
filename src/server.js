@@ -84,7 +84,7 @@ class WSMServer extends EE {
                             conn.valid_stat = CLIENT_VALID;
 
                             let is_new = false;
-                            
+
                             if (!self.clients[id]) {
                                 is_new = true;
                                 self.clients[id] = new WSMClientConnection(self, id);
