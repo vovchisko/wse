@@ -1,6 +1,6 @@
 // server example
 
-const WseServer = require('./src/server');
+const WseServer = require('./src/server-mult');
 const WseCustomProtocol = require('./src/protocol');
 
 function on_auth(dat, resolve) {
@@ -9,7 +9,7 @@ function on_auth(dat, resolve) {
 
 let srv = new WseServer({port: 3334}, on_auth);
 srv.logging = true;
-srv.cpu = 1;
+srv.cpu = 2;
 srv.name = 'WSE_TEST_SERVER';
 
 // comes from ws events, but with wse parms.

@@ -4,14 +4,13 @@ const WebSocket = require('ws');
 const EE = require('eventemitter3');
 const WseDefaultProtocol = require('./protocol');
 const REASON = require('./reason');
-
 const CLIENT_NOOB = 0;
 const CLIENT_VALIDATING = 1;
 const CLIENT_VALID = 2;
 
 let WSM_COUNTER = 0;
 
-class WSMServer extends EE {
+class WSMServerMult extends EE {
     constructor(ws_params = {}, on_auth, wse_protocol = null) {
 
         super();
@@ -19,10 +18,10 @@ class WSMServer extends EE {
         this.clients = {};
 
         //default properties
-        this.name = 'WSE-' + ++WSM_COUNTER;
+        this.name = 'WSE/M-' + ++WSM_COUNTER;
         this.emit_message_enable = false;
         this.emit_message_prefix = '';
-
+        this.cpu = 2;
         this.logging = false;
 
         this.ws_params = ws_params;
@@ -84,20 +83,26 @@ class WSMServer extends EE {
                             conn.id = id;
                             conn.valid_stat = CLIENT_VALID;
 
-                            if (self.clients[id]) {
-                                //what is close is not sync
-                                !self.clients[id].drop(REASON.OTHER_CLIENT_CONECTED);
-                                console.log('just closed one');
+                            let is_new = false;
+
+                            if (!self.clients[id]) {
+                                is_new = true;
+                                self.clients[id] = new WSMClientConnection(self, id);
                             }
 
-                            console.log('creating new...');
-                            self.clients[id] = new WSMClientConnection(self, conn);
-                            self.clients[id].send(self.protocol.hi);
+                            let index = self.clients[id].add_conn(conn);
 
-                            self.emit('join', self.clients[id]);
-                            self.emit('connection', self.clients[id]);
+                            self.clients[id].send(self.protocol.hi, {
+                                opened: self.clients[id].conns.length,
+                                index: self.clients[id].conns.indexOf(conn),
+                            }, index);
 
-                            self.log(id, 'join');
+                            if (is_new) {
+                                self.emit('join', self.clients[id]);
+                                self.log(id, 'join');
+                            }
+
+                            self.emit('connection', self.clients[id], index);
 
                         } else {
                             conn.close(1000, REASON.NOT_AUTHORIZED);
@@ -108,11 +113,16 @@ class WSMServer extends EE {
 
             conn.on('close', (code, reason) => {
                 if (conn.id !== null && conn.valid_stat === CLIENT_VALID) {
-                    console.log('okay then');
+                    let conn_left = self.clients[conn.id].cleanup();
+
                     self.emit('close', self.clients[conn.id], code, reason);
-                    self.emit('leave', self.clients[conn.id], code, reason);
-                    self.log(conn.id, 'leave', code, reason);
-                    delete self.clients[conn.id];
+                    if (!conn_left) {
+                        self.emit('leave', self.clients[conn.id], code, reason);
+                        self.log(conn.id, 'leave', code, reason);
+                        delete self.clients[conn.id];
+                    } else {
+                        self.log(conn.id, 'close', code, reason, ' /connections left:', conn_left)
+                    }
                 }
             });
             conn.onerror = (e) => {
@@ -129,23 +139,53 @@ class WSMServer extends EE {
 
 class WSMClientConnection {
     /**
-     * @param {WSMServer} parent_wsm - wsm instance
-     * @param {WebSocket} conn - ws connection
+     * @param {WSMServerMult} parent_wsm - wsm instance
+     * @param {id} id - connection
      */
-    constructor(parent_wsm, conn) {
-        this.id = conn.id;
-        this.conn = conn;
+    constructor(parent_wsm, id) {
+        this.id = id;
+        this.conns = [];
         this.wsm = parent_wsm;
     }
 
-    send(c, dat) {
-        this.conn.send(this.wsm.protocol.pack(c, dat));
+    add_conn(conn) {
+        this.conns.push(conn);
+
+        if (this.conns.length > this.wsm.cpu) {
+            let rem = this.conns.length - this.wsm.cpu;
+            for (let i = 0; i < rem; i++)
+                this.conns[i].close(1000, REASON.OTHER_CLIENT_CONECTED);
+        }
+
+        this.wsm.log(this.id, 'connection added. opened:', this.conns.length);
+
+        return this.conns.indexOf(conn);
+    }
+
+    send(c, dat, index = null) {
+        if (index) return this.conns[index].send(this.wsm.protocol.pack(c, dat));
+        for (let i = 0; i < this.conns.length; i++) {
+            this.conns[i].send(this.wsm.protocol.pack(c, dat));
+        }
     }
 
     drop(reason = REASON.NO_REASON) {
-        this.wsm.log(this.id, 'drop connetion. reason:', reason);
-        this.conn.close(1000, reason);
+        this.wsm.log(this.id, 'drop all connetions. reason:', reason);
+        for (let i = 0; i < this.conns.length; i++) {
+            this.conns[i].close(1000, reason)
+        }
     }
+
+    cleanup() {
+        let i = this.conns.length;
+        while (i--) {
+            if (this.conns[i].readyState === WebSocket.CLOSED) {
+                this.conns.splice(i, 1);
+            }
+        }
+        return this.conns.length;
+    }
+
 }
 
-module.exports = WSMServer;
+module.exports = WSMServerMult;

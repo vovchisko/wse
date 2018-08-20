@@ -1,5 +1,6 @@
 module.exports = {
     WseClient: require('./src/client'),
-    WseServer: require('./src/server'),
+    WSMServerMult: require('./src/server-mult'),
+    WSMServer: require('./src/server'),
     REASON: require('./src/reason'),
 };
