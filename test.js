@@ -49,6 +49,16 @@ setTimeout(() => {
 }, 1000);
 
 setTimeout(() => {
+    let client = new WseClient('ws://localhost:3334');
+    client.connect('C1');
+    client.on('open', (dat) => console.log('    C1 - hi', dat));
+    client.on('message', (c, dat) => console.log('   C1 GOT: ', c, dat));
+    client.on('close', (code, reason) => console.log('   C1 CLOSED: ', code, reason));
+    client.on('error', (e) => console.log('   C1 ERR: ', e));
+    console.log()
+}, 1500);
+
+setTimeout(() => {
 
     let bad_protocol = new WseCustomProtocol();
     bad_protocol.name = 'bad_one!';

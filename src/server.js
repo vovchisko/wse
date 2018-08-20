@@ -83,7 +83,13 @@ class WSMServer extends EE {
                             conn.id = id;
                             conn.valid_stat = CLIENT_VALID;
 
-                            if (!self.clients[id]) self.clients[id] = new WSMClientConnection(self, id);
+                            let is_new = false;
+                            
+                            if (!self.clients[id]) {
+                                is_new = true;
+                                self.clients[id] = new WSMClientConnection(self, id);
+                            }
+
                             let index = self.clients[id].add_conn(conn);
 
                             self.clients[id].send(self.protocol.hi, {
@@ -91,7 +97,13 @@ class WSMServer extends EE {
                                 index: self.clients[id].conns.indexOf(conn),
                             }, index);
 
+                            if (is_new) {
+                                self.emit('join', self.clients[id]);
+                                self.log(id, 'join');
+                            }
+
                             self.emit('connection', self.clients[id], index);
+
                         } else {
                             conn.close(1000, REASON.NOT_AUTHORIZED);
                         }
@@ -103,12 +115,12 @@ class WSMServer extends EE {
                 if (conn.id !== null && conn.valid_stat === CLIENT_VALID) {
                     let conn_left = self.clients[conn.id].cleanup();
 
+                    self.emit('close', self.clients[conn.id], code, reason);
                     if (!conn_left) {
                         self.emit('leave', self.clients[conn.id], code, reason);
                         self.log(conn.id, 'leave', code, reason);
                         delete self.clients[conn.id];
                     } else {
-                        self.emit('close', self.clients[conn.id], code, reason);
                         self.log(conn.id, 'close', code, reason, ' /connections left:', conn_left)
                     }
                 }
@@ -134,7 +146,6 @@ class WSMClientConnection {
         this.id = id;
         this.conns = [];
         this.wsm = parent_wsm;
-        this.wsm.log(this.id, 'join');
     }
 
     add_conn(conn) {
