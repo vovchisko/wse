@@ -50,7 +50,7 @@ class WSMServer extends EE {
 
         let self = this;
 
-        this.wss.on('connection', function (conn) {
+        this.wss.on('connection', function (conn, req) {
 
             if (conn.protocol !== self.protocol.name) {
                 return conn.close(1000, REASON.PROTOCOL_ERR);
@@ -58,6 +58,10 @@ class WSMServer extends EE {
 
             conn.id = null;
             conn.valid_stat = CLIENT_NOOB;
+
+            // RESOLVING IPV4 REMOTE ADDR
+            conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+            if (conn.remote_addr.substr(0, 7) == "::ffff:") conn.remote_addr = conn.remote_addr.substr(7);
 
             conn.on('message', function (message) {
                 let msg = self.protocol.unpack(message);
