@@ -126,7 +126,7 @@ class WseServer extends EE {
 
         });
 
-        this.log(`init(); cpu:${this.cpu};`);
+        this.log(`init(); cpu:single;`);
         return self;
     }
 }
