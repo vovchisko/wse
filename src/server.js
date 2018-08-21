@@ -91,10 +91,8 @@ class WseServer extends EE {
                             if (self.clients[id]) {
                                 //what is close is not sync
                                 !self.clients[id].drop(REASON.OTHER_CLIENT_CONECTED);
-                                console.log('just closed one');
                             }
 
-                            console.log('creating new...');
                             self.clients[id] = new WseClientConnection(self, conn);
                             self.clients[id].send(self.protocol.hi);
 
@@ -112,7 +110,6 @@ class WseServer extends EE {
 
             conn.on('close', (code, reason) => {
                 if (conn.id !== null && conn.valid_stat === CLIENT_VALID) {
-                    console.log('okay then');
                     self.emit('close', self.clients[conn.id], code, reason);
                     self.emit('leave', self.clients[conn.id], code, reason);
                     self.log(conn.id, 'leave', code, reason);
