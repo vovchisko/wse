@@ -55,7 +55,8 @@ class WseServer extends EE {
     }
 
     close(code = 1000, reason = REASON.BY_CLIENT) {
-        this.ws.close(code, reason);
+        if (this.ws)
+            this.ws.close(code, reason);
     }
 }
 
