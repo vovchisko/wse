@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const EE = require('eventemitter3');
 const WseDefaultProtocol = require('./protocol');
 const REASON = require('./reason');
+
 const CLIENT_NOOB = 0;
 const CLIENT_VALIDATING = 1;
 const CLIENT_VALID = 2;

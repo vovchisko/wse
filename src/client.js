@@ -3,7 +3,7 @@ const REASON = require("./reason");
 const EE = require("eventemitter3");
 const WebSocket = require('isomorphic-ws');
 
-class WseServer extends EE {
+class WseClient extends EE {
     constructor(url, options, wse_protocol = null) {
         super();
         this.is_online = false;
@@ -60,6 +60,6 @@ class WseServer extends EE {
     }
 }
 
-module.exports = WseServer;
+module.exports = WseClient;
 
 
