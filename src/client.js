@@ -10,7 +10,7 @@ class WseClient extends EE {
         this.protocol = wse_protocol || new WseDefaultProtocol();
         this.url = url;
         this.options = options;
-        this.emit_message_enable = true;
+        this.emit_message = true;
         this.emit_message_prefix = 'm:';
         this.reused = 0;
     }
@@ -41,7 +41,7 @@ class WseClient extends EE {
 
     _data(message) {
         let m = this.protocol.unpack(message.data);
-        if (this.emit_message_enable)
+        if (this.emit_message)
             this.emit(this.emit_message_prefix + m.c, m.dat);
         this.emit('message', m.c, m.dat);
     };

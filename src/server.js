@@ -20,8 +20,8 @@ class WseServer extends EE {
 
         //default properties
         this.name = 'WSE-' + ++WSE_COUNTER;
-        this.emit_message_enable = false;
-        this.emit_message_prefix = '';
+        this.emit_message = true;
+        this.emit_message_prefix = 'm:';
 
         this.logging = false;
 
@@ -73,8 +73,8 @@ class WseServer extends EE {
 
                 if (conn.valid_stat === CLIENT_VALID) {
 
-                    if (self.emit_message_enable)
-                        self.emit(this.emit_message_prefix + msg.c, self.clients[conn.id], msg.dat);
+                    if (self.emit_message)
+                        self.emit(self.emit_message_prefix + msg.c, self.clients[conn.id], msg.dat);
 
                     self.emit('message', self.clients[conn.id], msg.c, msg.dat);
 
