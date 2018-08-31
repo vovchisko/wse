@@ -1,4 +1,5 @@
 # wse
+
 Suspicious wrapper for ``ws`` with authorization and customizable protocol. Useful when you talking WS a lot. It looks like original WS, and even smells the same. But a little bit cooler. About 25% cooler.
 
 ### Inside:
@@ -8,20 +9,17 @@ Suspicious wrapper for ``ws`` with authorization and customizable protocol. Usef
 ``WseServerMulti`` - same as WseServer, but support multiple connections with the same user ID.
 ``REASON`` - list of constants with reasons for closing connections.
 
-
-***BEWARE! BEWA-A-A-A-A-ARE!***
+***BEWA-A-A-A-A-ARE!***
 *This package are not tested well and still in development. It mostly working, but I don`t recommend to use it on production like I do.*
-
-
 
 ### Example
 
-To create ``wse`` server you need to pass params with port or pass httpServer, just like with classic [``ws`` package](/package/ws).
+To create ``wse`` server you need to pass params with port or pass httpServer, just like with classic [``ws``](https://www.npmjs.com/package/ws) package.
 Also you should specify ``on_auth`` function to describe auth process after client connected.
 
-#### Server example
-```JavaScript
+#### SERVER EXAMPLE
 
+```JavaScript
 const {WseServer} = require('wse');
 
 // auth procedure is all up to you,
@@ -54,17 +52,14 @@ srv.on('message', (client, c, dat) => {
 
 // server is ready and can listen
 srv.init();
-
-
 ```
 
 
-#### Client Example
+#### CLIENT EXAMPLE
 
 This can be used with node env and browser as well.
 
 ```JavaScript
-
 const {WseClient} = require('wse');
 
 const client = new WseClient('ws://localhost:3334', {/* classic ws options */});
@@ -84,16 +79,13 @@ client.on('error', (e) => console.log(' >> connection error', e));
 setInterval(() => {
     client.send('ping', Math.random());
 }, 1000);
-
-
 ```
 
-#### Custom Protocol Example
+#### CUSTOM PROTOCOL EXAMPLE
 
-Cusom protocol is a class, that should contain ``pack`` and ``unpack`` function. It will be used everywhere on cleint and server for messageing. Let's say you don't like JSON and you need tomething faster. Default protocol use JSON, just like this:
+Most tasty thing. Cusom protocol is a class, that contain ``pack`` and ``unpack`` functions. This functions used everywhere on cleint and server for messages processing. Let's say you don't like JSON and you need something faster. Default protocol use JSON, just like this:
 
-```Javascript
-
+```JavaScript
 class WseCustomProtocol {
     constructor() {
         this.name = 'wse-default-json'; // protocol name
@@ -113,12 +105,11 @@ class WseCustomProtocol {
         return JSON.parse(string);
     }
 }
-
 ```
 
-You can create your own, describe messages processing any way you want and use it on server and client sides like this:
+You can create your own class, describe messages processing in any way you want and use it on server and client sides like this:
 
-```Javascript
+```JavaScript
 // client side
 const client = new WseClient('ws://localhost:3334', {/* ws options */}, new WseCustomProtocol());
 
@@ -126,4 +117,5 @@ const client = new WseClient('ws://localhost:3334', {/* ws options */}, new WseC
 const srv = new WseServer({port: 3334}, on_auth, new WseCustomProtocol());
 ```
 
-We all set.
+
+Did I miss something?
