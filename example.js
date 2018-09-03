@@ -52,7 +52,7 @@ const client = new WseClient('ws://localhost:3334', {/* classic ws options */});
 // just call connect again.
 client.connect({id: 'USER-1', api_key: 'yes_it_is'});
 
-client.on('open', (dat) => console.log(' >> connected and logged in', dat));
+client.on('open', () => console.log(' >> connected and logged in'));
 client.on('message', (c, dat) => console.log(' >> message form server', c, dat));
 client.on('close', (code, reason) => console.log(' >> connection closed', code, reason));
 client.on('error', (e) => console.log(' >> connection error', e));

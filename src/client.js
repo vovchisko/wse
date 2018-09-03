@@ -1,5 +1,5 @@
 const WseDefaultProtocol = require("./protocol");
-const REASON = require("./reason");
+const WSE_REASON = require("./reason");
 const EE = require("eventemitter3");
 const WebSocket = require('isomorphic-ws');
 
@@ -33,8 +33,8 @@ class WseClient extends EE {
         let m = this.protocol.unpack(message.data);
         this.is_online = true;
         if (m.c === this.protocol.hi) {
-            this.emit('open', m.dat); //for capability
-            this.emit(this.protocol.hi, m.dat);
+            this.emit('open'); //for capability
+            this.emit(this.protocol.hi);
         }
         this.ws.onmessage = (msg) => this._data(msg);
     }
@@ -54,7 +54,7 @@ class WseClient extends EE {
         }
     }
 
-    close(code = 1000, reason = REASON.BY_CLIENT) {
+    close(code = 1000, reason = WSE_REASON.BY_CLIENT) {
         if (this.ws)
             this.ws.close(code, reason);
     }

@@ -3,7 +3,7 @@
 const WebSocket = require('ws');
 const EE = require('eventemitter3');
 const WseDefaultProtocol = require('./protocol');
-const REASON = require('./reason');
+const WSE_REASON = require('./reason');
 
 const CLIENT_NOOB = 0;
 const CLIENT_VALIDATING = 1;
@@ -35,7 +35,7 @@ class WseServer extends EE {
         this.log('configured');
     }
 
-    drop_client(id, reason = REASON.NO_REASON) {
+    drop_client(id, reason = WSE_REASON.NO_REASON) {
         if (this.clients[id]) this.clients[id].drop(reason);
     }
 
@@ -53,7 +53,7 @@ class WseServer extends EE {
         this.wss.on('connection', function (conn, req) {
 
             if (conn.protocol !== self.protocol.name) {
-                return conn.close(1000, REASON.PROTOCOL_ERR);
+                return conn.close(1000, WSE_REASON.PROTOCOL_ERR);
             }
 
             conn.id = null;
@@ -67,7 +67,7 @@ class WseServer extends EE {
                 let msg = self.protocol.unpack(message);
 
 
-                if (!msg) return conn.close(1000, REASON.PROTOCOL_ERR);
+                if (!msg) return conn.close(1000, WSE_REASON.PROTOCOL_ERR);
 
                 if (conn.valid_stat === CLIENT_VALIDATING) return;
 
@@ -90,7 +90,7 @@ class WseServer extends EE {
 
                             if (self.clients[id]) {
                                 //what is close is not sync
-                                !self.clients[id].drop(REASON.OTHER_CLIENT_CONECTED);
+                                !self.clients[id].drop(WSE_REASON.OTHER_CLIENT_CONECTED);
                             }
 
                             self.clients[id] = new WseClientConnection(self, conn);
@@ -102,7 +102,7 @@ class WseServer extends EE {
                             self.log(id, 'join');
 
                         } else {
-                            conn.close(1000, REASON.NOT_AUTHORIZED);
+                            conn.close(1000, WSE_REASON.NOT_AUTHORIZED);
                         }
                     });
                 }
@@ -143,7 +143,7 @@ class WseClientConnection {
         this.conn.send(this.wsm.protocol.pack(c, dat));
     }
 
-    drop(reason = REASON.NO_REASON) {
+    drop(reason = WSE_REASON.NO_REASON) {
         this.wsm.log(this.id, 'drop connetion. reason:', reason);
         this.conn.close(1000, reason);
     }

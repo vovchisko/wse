@@ -7,7 +7,7 @@ Suspicious wrapper for ``ws`` with authorization and customizable protocol. Usef
 ``WseClient`` - node / Browser client class.
 ``WseServer`` - node server class.
 ``WseServerMulti`` - same as WseServer, but support multiple connections with the same user ID.
-``REASON`` - list of constants with reasons for closing connections.
+``WSE_REASON`` - list of constants with reasons for closing connections.
 
 ***BEWA-A-A-A-A-ARE!***
 *This package are not tested well and still in development. It mostly working, but I don`t recommend to use it on production like I do.*

@@ -3,7 +3,7 @@
 const WebSocket = require('ws');
 const EE = require('eventemitter3');
 const WseDefaultProtocol = require('./protocol');
-const REASON = require('./reason');
+const WSE_REASON = require('./reason');
 
 const CLIENT_NOOB = 0;
 const CLIENT_VALIDATING = 1;
@@ -35,7 +35,7 @@ class WseServerMult extends EE {
         this.log('configured');
     }
 
-    drop_client(id, reason = REASON.NO_REASON) {
+    drop_client(id, reason = WSE_REASON.NO_REASON) {
         if (this.clients[id]) this.clients[id].drop(reason);
     }
 
@@ -53,7 +53,7 @@ class WseServerMult extends EE {
         this.wss.on('connection', function (conn, req) {
 
             if (conn.protocol !== self.protocol.name) {
-                return conn.close(1000, REASON.PROTOCOL_ERR);
+                return conn.close(1000, WSE_REASON.PROTOCOL_ERR);
             }
 
             conn.id = null;
@@ -68,7 +68,7 @@ class WseServerMult extends EE {
                 let msg = self.protocol.unpack(message);
 
 
-                if (!msg) return conn.close(1000, REASON.PROTOCOL_ERR);
+                if (!msg) return conn.close(1000, WSE_REASON.PROTOCOL_ERR);
 
                 if (conn.valid_stat === CLIENT_VALIDATING) return;
 
@@ -111,7 +111,7 @@ class WseServerMult extends EE {
                             self.emit('connection', self.clients[id], index);
 
                         } else {
-                            conn.close(1000, REASON.NOT_AUTHORIZED);
+                            conn.close(1000, WSE_REASON.NOT_AUTHORIZED);
                         }
                     });
                 }
@@ -160,7 +160,7 @@ class WseClientConnection {
         if (this.conns.length > this.wsm.cpu) {
             let rem = this.conns.length - this.wsm.cpu;
             for (let i = 0; i < rem; i++)
-                this.conns[i].close(1000, REASON.OTHER_CLIENT_CONECTED);
+                this.conns[i].close(1000, WSE_REASON.OTHER_CLIENT_CONECTED);
         }
 
         this.wsm.log(this.id, 'connection added. opened:', this.conns.length);
@@ -175,7 +175,7 @@ class WseClientConnection {
         }
     }
 
-    drop(reason = REASON.NO_REASON) {
+    drop(reason = WSE_REASON.NO_REASON) {
         this.wsm.log(this.id, 'drop all connetions. reason:', reason);
         for (let i = 0; i < this.conns.length; i++) {
             this.conns[i].close(1000, reason)
