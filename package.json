@@ -13,7 +13,10 @@
   },
   "keywords": [
     "websoket",
-    "ws"
+    "ws",
+    "websocket-auth",
+    "ws-auth",
+    "ws-protocol"
   ],
   "author": "Vladimir Ishenko <vovchisko@gmail.com>",
   "license": "ISC",
