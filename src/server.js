@@ -109,7 +109,9 @@ class WseServer extends EE {
             });
 
             conn.on('close', (code, reason) => {
-                if (conn.id !== null && conn.valid_stat === CLIENT_VALID) {
+                // todo: it was fixed, but I dodn't get why this was happening.
+                // error was here, sometimes close fires when id is not empty, but self.clients[id] not exists.
+                if (conn.id && conn.valid_stat === CLIENT_VALID && self.clients[conn.id]) {
                     self.emit('close', self.clients[conn.id], code, reason);
                     self.emit('leave', self.clients[conn.id], code, reason);
                     self.log(conn.id, 'leave', code, reason);
