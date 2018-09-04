@@ -33,8 +33,8 @@ class WseClient extends EE {
         let m = this.protocol.unpack(message.data);
         this.is_online = true;
         if (m.c === this.protocol.hi) {
-            this.emit('open'); //for capability
-            this.emit(this.protocol.hi);
+            this.emit('open', m.dat); //for capability
+            this.emit(this.protocol.hi, m.dat);
         }
         this.ws.onmessage = (msg) => this._data(msg);
     }

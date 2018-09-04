@@ -29,7 +29,7 @@ function on_auth(data, resolve) {
     if (data && data.id && data.api_key === 'yes_it_is') {
         // yes, this client looks valid and his ID will be...
         // only after this you'll get message events.
-        resolve(data.id);
+        resolve(data.id, {hey: 'some additional data here'});
     } else {
         // user will be disconnected instantly
         // no events fired
@@ -63,7 +63,6 @@ This can be used with node env and browser as well.
 const {WseClient} = require('wse');
 
 const client = new WseClient('ws://localhost:3334', {/* classic ws options */});
-
 
 // client object can be re-used btw.
 // no need to create new instance if this one disconnected.

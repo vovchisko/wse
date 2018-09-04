@@ -28,7 +28,7 @@ class WseServerMult extends EE {
         this.ws_params = ws_params;
 
         this.protocol = wse_protocol || new WseDefaultProtocol();
-        this.on_auth = on_auth || (() => {
+        this.on_auth = on_auth || ((id, data) => {
             throw new Error('params.on_auth function not specified!')
         });
 
@@ -84,7 +84,7 @@ class WseServerMult extends EE {
 
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING;
-                    self.on_auth(msg.dat, function (id) {
+                    self.on_auth(msg.dat, function (id, data) {
                         if (id) {
                             conn.id = id;
                             conn.valid_stat = CLIENT_VALID;
@@ -98,10 +98,7 @@ class WseServerMult extends EE {
 
                             let index = self.clients[id].add_conn(conn);
 
-                            self.clients[id].send(self.protocol.hi, {
-                                opened: self.clients[id].conns.length,
-                                index: self.clients[id].conns.indexOf(conn),
-                            }, index);
+                            self.clients[id].send(self.protocol.hi, data, index);
 
                             if (is_new) {
                                 self.emit('join', self.clients[id]);
@@ -118,7 +115,7 @@ class WseServerMult extends EE {
             });
 
             conn.on('close', (code, reason) => {
-                if (conn.id !== null && conn.valid_stat === CLIENT_VALID) {
+                if (conn.id && conn.valid_stat === CLIENT_VALID && self.clients[conn.id]) {
                     let conn_left = self.clients[conn.id].cleanup();
 
                     self.emit('close', self.clients[conn.id], code, reason);

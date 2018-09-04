@@ -28,7 +28,7 @@ class WseServer extends EE {
         this.ws_params = ws_params;
 
         this.protocol = wse_protocol || new WseDefaultProtocol();
-        this.on_auth = on_auth || (() => {
+        this.on_auth = on_auth || ((id, data) => {
             throw new Error('params.on_auth function not specified!')
         });
 
@@ -83,7 +83,7 @@ class WseServer extends EE {
 
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING;
-                    self.on_auth(msg.dat, function (id) {
+                    self.on_auth(msg.dat, function (id, data) {
                         if (id) {
                             conn.id = id;
                             conn.valid_stat = CLIENT_VALID;
@@ -94,7 +94,7 @@ class WseServer extends EE {
                             }
 
                             self.clients[id] = new WseClientConnection(self, conn);
-                            self.clients[id].send(self.protocol.hi);
+                            self.clients[id].send(self.protocol.hi, data);
 
                             self.emit('join', self.clients[id]);
                             self.emit('connection', self.clients[id]);

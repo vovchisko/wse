@@ -1,6 +1,3 @@
-
-
-
 // SERVER
 
 
@@ -13,7 +10,7 @@ function on_auth(data, resolve) {
     if (data && data.id && data.api_key === 'yes_it_is') {
         // yes, this client looks valid and his ID will be...
         // only after this you'll get message events.
-        resolve(data.id);
+        resolve(data.id, {hey: 'some additional data here'});
     } else {
         // user will be disconnected instantly
         // no events fired
@@ -38,8 +35,6 @@ srv.on('message', (client, c, dat) => {
 srv.init();
 
 
-
-
 // CLIENT
 
 
@@ -52,7 +47,7 @@ const client = new WseClient('ws://localhost:3334', {/* classic ws options */});
 // just call connect again.
 client.connect({id: 'USER-1', api_key: 'yes_it_is'});
 
-client.on('open', () => console.log(' >> connected and logged in'));
+client.on('open', (dat) => console.log(' >> connected and logged in', dat));
 client.on('message', (c, dat) => console.log(' >> message form server', c, dat));
 client.on('close', (code, reason) => console.log(' >> connection closed', code, reason));
 client.on('error', (e) => console.log(' >> connection error', e));
