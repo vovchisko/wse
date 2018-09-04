@@ -47,7 +47,7 @@ class WseClient extends EE {
     };
 
     send(c, dat) {
-        if (this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(this.protocol.pack(c, dat));
         } else {
             this.emit('error', new Error('socket-not-opened'))
