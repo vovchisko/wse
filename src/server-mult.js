@@ -101,8 +101,8 @@ class WseServerMult extends EE {
                             self.clients[id].send(self.protocol.hi, data, index);
 
                             if (is_new) {
-                                self.emit('join', self.clients[id]);
-                                self.log(id, 'join');
+                                self.emit('join', self.clients[id], msg.dat);
+                                self.log(id, 'join', msg.dat);
                             }
 
                             self.emit('connection', self.clients[id], index);

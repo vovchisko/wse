@@ -96,10 +96,10 @@ class WseServer extends EE {
                             self.clients[id] = new WseClientConnection(self, conn);
                             self.clients[id].send(self.protocol.hi, data);
 
-                            self.emit('join', self.clients[id]);
-                            self.emit('connection', self.clients[id]);
+                            self.emit('join', self.clients[id], msg.dat);
+                            self.emit('connection', self.clients[id], msg.dat);
 
-                            self.log(id, 'join');
+                            self.log(id, 'join', msg.dat);
 
                         } else {
                             conn.close(1000, WSE_REASON.NOT_AUTHORIZED);
