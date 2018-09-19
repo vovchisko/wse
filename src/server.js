@@ -142,7 +142,11 @@ class WseClientConnection {
     }
 
     send(c, dat) {
-        this.conn.send(this.wsm.protocol.pack(c, dat));
+        if (this.conn && this.conn.readyState === WebSocket.OPEN) {
+            this.conn.send(this.wsm.protocol.pack(c, dat));
+        } else {
+            this.wsm.emit('error', this, new Error('socket-not-opened'));
+        }
     }
 
     drop(reason = WSE_REASON.NO_REASON) {

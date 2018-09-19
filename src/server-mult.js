@@ -166,9 +166,20 @@ class WseClientConnection {
     }
 
     send(c, dat, index = null) {
-        if (index) return this.conns[index].send(this.wsm.protocol.pack(c, dat));
+        if (index) {
+            if (this.conns[index] && this.conns[index].readyState === WebSocket.OPEN) {
+                return this.conns[index].send(this.wsm.protocol.pack(c, dat));
+            } else {
+                this.wsm.emit('error', this, new Error('socket-not-opened'));
+                return false;
+            }
+        }
         for (let i = 0; i < this.conns.length; i++) {
-            this.conns[i].send(this.wsm.protocol.pack(c, dat));
+            if (this.conns[i] && this.conns[index].readyState === WebSocket.OPEN) {
+                this.conns[i].send(this.wsm.protocol.pack(c, dat));
+            } else {
+                this.wsm.emit('error', this, new Error('socket-not-opened'));
+            }
         }
     }
 
