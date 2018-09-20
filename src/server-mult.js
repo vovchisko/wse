@@ -170,7 +170,7 @@ class WseClientConnection {
             if (this.conns[index] && this.conns[index].readyState === WebSocket.OPEN) {
                 return this.conns[index].send(this.wsm.protocol.pack(c, dat));
             } else {
-                this.wsm.emit('error', this, new Error('socket-not-opened'));
+                this.wsm.emit('error', new Error('socket-not-opened'), this, this.conn[index], index);
                 return false;
             }
         }
@@ -178,7 +178,7 @@ class WseClientConnection {
             if (this.conns[i] && this.conns[index].readyState === WebSocket.OPEN) {
                 this.conns[i].send(this.wsm.protocol.pack(c, dat));
             } else {
-                this.wsm.emit('error', this, i, new Error('socket-not-opened'));
+                this.wsm.emit('error', new Error('socket-not-opened'), this, this.conn[i], i);
             }
         }
     }

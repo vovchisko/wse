@@ -145,7 +145,7 @@ class WseClientConnection {
         if (this.conn && this.conn.readyState === WebSocket.OPEN) {
             this.conn.send(this.wsm.protocol.pack(c, dat));
         } else {
-            this.wsm.emit('error', this, new Error('socket-not-opened'));
+            this.wsm.emit('error', new Error('socket-not-opened'), this, this.conn);
         }
     }
 
