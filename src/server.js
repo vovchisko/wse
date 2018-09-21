@@ -141,11 +141,18 @@ class WseClientConnection {
         this.wsm = parent_wsm;
     }
 
+    /**
+     * Send a message to the client
+     * @param {string} c - message id
+     * @param {string|number|object} dat - payload
+     * @returns {boolean} - true if connection was opened, false - if not.
+     */
     send(c, dat) {
         if (this.conn && this.conn.readyState === WebSocket.OPEN) {
             this.conn.send(this.wsm.protocol.pack(c, dat));
+            return true;
         } else {
-            this.wsm.emit('error', new Error('socket-not-opened'), this, this.conn);
+            return false;
         }
     }
 

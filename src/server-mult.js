@@ -165,22 +165,32 @@ class WseClientConnection {
         return this.conns.indexOf(conn);
     }
 
-    send(c, dat, index = null) {
-        if (index) {
+    /**
+     * Send a message to the client via all opened connections for this user (or via specified connection)
+     * @param {string} c - message id
+     * @param {string|number|object} dat - payload
+     * @param {number} index - connection index (-1 all)
+     * @returns {boolean|null} - null meand not all connections was opened, true - all .send calls ok, false - nothing was sent.
+     */
+    send(c, dat, index = -1) {
+        if (index !== -1) {
             if (this.conns[index] && this.conns[index].readyState === WebSocket.OPEN) {
-                return this.conns[index].send(this.wsm.protocol.pack(c, dat));
+                this.conns[index].send(this.wsm.protocol.pack(c, dat));
+                return true;
             } else {
-                this.wsm.emit('error', new Error('socket-not-opened'), this, this.conn[index], index);
                 return false;
             }
         }
+
+        let ok = 0;
         for (let i = 0; i < this.conns.length; i++) {
             if (this.conns[i] && this.conns[index].readyState === WebSocket.OPEN) {
                 this.conns[i].send(this.wsm.protocol.pack(c, dat));
-            } else {
-                this.wsm.emit('error', new Error('socket-not-opened'), this, this.conn[i], i);
+                ok++;
             }
         }
+
+        return !ok ? false : ok === this.conns.length ? true : null;
     }
 
     drop(reason = WSE_REASON.NO_REASON) {
