@@ -22,6 +22,8 @@ class WseServerMult extends EE {
         this.name = 'WSE/M-' + ++WSE_COUNTER;
         this.emit_message = true;
         this.emit_message_prefix = 'm:';
+        this.log_ignored_messages = false;
+
         this.cpu = 2;
         this.logging = false;
 
@@ -75,7 +77,8 @@ class WseServerMult extends EE {
                 if (conn.valid_stat === CLIENT_VALID) {
 
                     if (self.emit_message)
-                        self.emit(self.emit_message_prefix + msg.c, self.clients[conn.id], msg.dat);
+                        if (!self.emit(self.emit_message_prefix + msg.c, self.clients[conn.id], msg.dat) && self.log_ignored_messages)
+                            console.log(`WSE_WARN: ignored message listener '${msg.c}'`, msg.dat);
 
                     self.emit('message', self.clients[conn.id], msg.c, msg.dat);
 
@@ -184,7 +187,7 @@ class WseClientConnection {
 
         let ok = 0;
         for (let i = 0; i < this.conns.length; i++) {
-            if (this.conns[i] && this.conns[index].readyState === WebSocket.OPEN) {
+            if (this.conns[i] && this.conns[i].readyState === WebSocket.OPEN) {
                 this.conns[i].send(this.wsm.protocol.pack(c, dat));
                 ok++;
             }
