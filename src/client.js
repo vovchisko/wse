@@ -12,7 +12,7 @@ class WseClient extends EE {
         this.options = options;
         this.emit_message = true;
         this.emit_message_prefix = 'm:';
-        this.log_ignored_messages = false;
+        this.emit_messages_ignored = false;
         this.reused = 0;
     }
 
@@ -43,8 +43,8 @@ class WseClient extends EE {
     _data(message) {
         let m = this.protocol.unpack(message.data);
         if (this.emit_message) {
-            if (!this.emit(this.emit_message_prefix + m.c, m.dat) && this.log_ignored_messages)
-                console.log(`WSE_WARN: ignored message listener '${m.c}'`, m.dat);
+            if (!this.emit(this.emit_message_prefix + m.c, m.dat) && this.emit_messages_ignored)
+                this.emit(this.emit_message_prefix + '_ignored', m.c, m.dat);
 
         }
         this.emit('message', m.c, m.dat);

@@ -22,7 +22,7 @@ class WseServer extends EE {
         this.name = 'WSE-' + ++WSE_COUNTER;
         this.emit_message = true;
         this.emit_message_prefix = 'm:';
-        this.log_ignored_messages = false;
+        this.emit_messages_ignored = false;
 
         this.logging = false;
 
@@ -75,9 +75,8 @@ class WseServer extends EE {
                 if (conn.valid_stat === CLIENT_VALID) {
 
                     if (self.emit_message)
-                        if (!self.emit(self.emit_message_prefix + msg.c, self.clients[conn.id], msg.dat) && self.log_ignored_messages)
-                            console.log(`WSE_WARN: ignored message listener '${msg.c}'`, msg.dat);
-
+                        if (!self.emit(self.emit_message_prefix + msg.c, self.clients[conn.id], msg.dat) && self.emit_messages_ignored)
+                            self.emit(self.emit_message_prefix + '_ignored', self.clients[conn.id], msg.c, msg.dat);
 
                     self.emit('message', self.clients[conn.id], msg.c, msg.dat);
 
