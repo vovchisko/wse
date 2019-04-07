@@ -93,6 +93,8 @@ class WseServer extends EE {
                             if (self.clients[id]) {
                                 //what is close is not sync
                                 !self.clients[id].drop(WSE_REASON.OTHER_CLIENT_CONECTED);
+                                conn.close(1000, WSE_REASON.OTHER_CLIENT_CONECTED);
+                                return;
                             }
 
                             self.clients[id] = new WseClientConnection(self, conn);
