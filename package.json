@@ -25,8 +25,8 @@
   },
   "homepage": "https://github.com/vovchisko/wse#readme",
   "dependencies": {
-    "eventemitter3": "^3.1.0",
+    "eventemitter3": "^3.1.2",
     "isomorphic-ws": "^4.0.1",
-    "ws": "^6.0.0"
+    "ws": "^6.2.1"
   }
 }
