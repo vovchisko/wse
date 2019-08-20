@@ -5,4 +5,4 @@ module.exports = {
     PROTOCOL_ERR: 'wse-invalid-protocol',
     NO_REASON: 'wse-unknown-reason',
     BY_CLIENT: 'wse-by-client',
-};
+}

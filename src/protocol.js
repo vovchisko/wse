@@ -1,19 +1,19 @@
 class WseDefaultProtocol {
     constructor() {
-        this.name = 'wse-default-json';
-        this.hi = 'hello';
+        this.name = 'wse-default-json'
+        this.hi = 'hello'
     }
 
     pack(c, dat) {
         return JSON.stringify({
             c: c,
-            dat: dat
-        });
+            dat: dat,
+        })
     }
 
     unpack(string) {
-        return JSON.parse(string);
+        return JSON.parse(string)
     }
 }
 
-module.exports = WseDefaultProtocol;
+module.exports = WseDefaultProtocol
