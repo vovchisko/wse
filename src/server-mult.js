@@ -9,8 +9,6 @@ const CLIENT_NOOB = 0
 const CLIENT_VALIDATING = 1
 const CLIENT_VALID = 2
 
-let WSE_COUNTER = 0
-
 class WseServerMult extends EE {
     constructor(ws_params = {}, on_auth, wse_protocol = null) {
 
@@ -19,7 +17,7 @@ class WseServerMult extends EE {
         this.clients = {}
 
         //default properties
-        this.name = 'WSE/M-' + ++WSE_COUNTER
+        this.name = null
         this.emit_message = true
         this.emit_message_prefix = 'm:'
         this.emit_messages_ignored = false
@@ -43,7 +41,7 @@ class WseServerMult extends EE {
 
     log() {
         if (!this.logging) return
-        console.log(this.name + ':', ...arguments)
+        console.log(this.name ? [this.name + ':', ...arguments] : [...arguments])
     };
 
     init() {
@@ -63,8 +61,10 @@ class WseServerMult extends EE {
 
             // RESOLVING IPV4 REMOTE ADDR
             conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress
-            if (conn.remote_addr.substr(0, 7) == '::ffff:') conn.remote_addr = conn.remote_addr.substr(7)
+            if (conn.remote_addr.substr(0, 7) === '::ffff:') conn.remote_addr = conn.remote_addr.substr(7)
 
+            // CAN BE OVERRIDEN BY PARAMS
+            conn.pub_host = conn.remote_addr
 
             conn.on('message', function (message) {
                 let msg = self.protocol.unpack(message)
@@ -87,7 +87,7 @@ class WseServerMult extends EE {
 
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING
-                    self.on_auth(msg.dat, function (id, data) {
+                    self.on_auth(msg.dat.payload, function (id, data) {
                         if (id) {
                             conn.id = id
                             conn.valid_stat = CLIENT_VALID
@@ -101,11 +101,15 @@ class WseServerMult extends EE {
 
                             let index = self.clients[id].add_conn(conn)
 
-                            self.clients[id].send(self.protocol.hi, data, index)
+                            // from connection params
+                            if (msg.dat.params && msg.dat.params.pub_host)
+                                conn.pub_host = msg.dat.params.pub_host
+
+                            self.clients[id].send(self.protocol.welcome, data, index)
 
                             if (is_new) {
-                                self.emit('join', self.clients[id], msg.dat)
-                                self.log(id, 'join', msg.dat)
+                                self.emit('join', self.clients[id], msg.dat.payload)
+                                self.log(id, 'join', msg.dat.payload)
                             }
 
                             self.emit('connection', self.clients[id], index)

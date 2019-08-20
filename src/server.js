@@ -9,8 +9,6 @@ const CLIENT_NOOB = 0
 const CLIENT_VALIDATING = 1
 const CLIENT_VALID = 2
 
-let WSE_COUNTER = 0
-
 class WseServer extends EE {
     constructor(ws_params = {}, on_auth, wse_protocol = null) {
 
@@ -19,7 +17,7 @@ class WseServer extends EE {
         this.clients = {}
 
         //default properties
-        this.name = 'WSE-' + ++WSE_COUNTER
+        this.name = null
         this.emit_message = true
         this.emit_message_prefix = 'm:'
         this.emit_messages_ignored = false
@@ -42,7 +40,7 @@ class WseServer extends EE {
 
     log() {
         if (!this.logging) return
-        console.log(this.name + ':', ...arguments)
+        console.log(this.name ? this.name + ':' : '', ...arguments)
     };
 
     init() {
@@ -60,10 +58,13 @@ class WseServer extends EE {
             conn.id = null
             conn.valid_stat = CLIENT_NOOB
 
+
             // RESOLVING IPV4 REMOTE ADDR
             conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress
             if (conn.remote_addr.substr(0, 7) === '::ffff:') conn.remote_addr = conn.remote_addr.substr(7)
 
+            // CAN BE OVERRIDEN BY PARAMS
+            conn.pub_host = conn.remote_addr
             conn.on('message', function (message) {
                 let msg = self.protocol.unpack(message)
 
@@ -85,7 +86,10 @@ class WseServer extends EE {
 
                 if (conn.valid_stat === CLIENT_NOOB) {
                     conn.valid_stat = CLIENT_VALIDATING
-                    self.on_auth(msg.dat, function (id, data) {
+
+
+                    self.on_auth(msg.dat.payload, function (id, data) {
+
                         if (id) {
                             conn.id = id
                             conn.valid_stat = CLIENT_VALID
@@ -97,13 +101,17 @@ class WseServer extends EE {
                                 return
                             }
 
+                            // from connection params
+                            if (msg.dat.params && msg.dat.params.pub_host)
+                                conn.pub_host = msg.dat.params.pub_host
+
                             self.clients[id] = new WseClientConnection(self, conn)
-                            self.clients[id].send(self.protocol.hi, data)
+                            self.clients[id].send(self.protocol.welcome, data)
 
-                            self.emit('join', self.clients[id], msg.dat)
-                            self.emit('connection', self.clients[id], msg.dat)
+                            self.emit('join', self.clients[id], msg.dat.payload)
+                            self.emit('connection', self.clients[id], msg.dat.payload)
 
-                            self.log(id, 'join', msg.dat)
+                            self.log(id, 'join', msg.dat.payload)
 
                         } else {
                             conn.close(1000, WSE_REASON.NOT_AUTHORIZED)

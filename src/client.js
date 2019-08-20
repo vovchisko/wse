@@ -16,11 +16,11 @@ class WseClient extends EE {
         this.reused = 0
     }
 
-    connect(payload) {
+    connect(payload, params) {
         this.reused++
         this.is_online = null
         this.ws = new WebSocket(this.url, this.protocol.name, this.options)
-        this.ws.onopen = () => this.send(this.protocol.hi, payload)
+        this.ws.onopen = () => this.send(this.protocol.hi, { payload, params })
         this.ws.onmessage = (m) => this._before_welcome(m)
         this.ws.onerror = (e) => this.emit('error', e)
         this.ws.onclose = (event) => {
@@ -33,9 +33,9 @@ class WseClient extends EE {
     _before_welcome(message) {
         let m = this.protocol.unpack(message.data)
         this.is_online = true
-        if (m.c === this.protocol.hi) {
+        if (m.c === this.protocol.welcome) {
             this.emit('open', m.dat) //for capability
-            this.emit(this.protocol.hi, m.dat)
+            this.emit(this.protocol.welcome, m.dat)
         }
         this.ws.onmessage = (msg) => this._data(msg)
     }
