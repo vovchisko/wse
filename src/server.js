@@ -45,11 +45,11 @@ class WseServer extends EE {
 
   init () {
 
-    this.wss = new WebSocket.Server(this.ws_params)
+    this.ws_server = new WebSocket.Server(this.ws_params)
 
     let self = this
 
-    this.wss.on('connection', function (conn, req) {
+    this.ws_server.on('connection', function (conn, req) {
 
       if (conn.protocol !== self.protocol.name) {
         return conn.close(1000, WSE_REASON.PROTOCOL_ERR)

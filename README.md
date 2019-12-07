@@ -9,9 +9,6 @@ Suspicious wrapper for ``ws`` with authorization and customizable protocol. Usef
 ``WseServerMulti`` - same as WseServer, but support multiple connections with the same user ID.
 ``WSE_REASON`` - list of constants with reasons for closing connections.
 
-***BEWA-A-A-A-A-ARE!***
-*This package are not tested well and still in development. It mostly working, but I don`t recommend to use it on production like I do.*
-
 ### Example
 
 To create ``wse`` server you need to pass params with port or pass httpServer, just like with classic [``ws``](https://www.npmjs.com/package/ws) package.
