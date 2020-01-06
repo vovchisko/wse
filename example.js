@@ -35,29 +35,56 @@ srv.on('m:ping', (client, dat) => {
 // server is ready and can listen
 srv.init()
 
+// broadcast:
+setTimeout(() => {
+  srv.broadcast('pong', 'broadcast-1')
+  srv.broadcast('pong', 'broadcast-2')
+}, 2000)
 
 // CLIENT
 
 
 const { WseClient } = require('./node')
 
-const client = new WseClient('ws://localhost:3334', {/* classic ws options */ })
-client.emit_messages_ignored = true
+const client1 = new WseClient('ws://localhost:3334', {/* classic ws options */ })
+client1.emit_messages_ignored = true
 
 // client object can be re-used btw.
 // no need to create new instance if this one disconnected.
 // just call connect again.
-client.connect({ id: 'USER-1', api_key: 'yes_it_is' })
+client1.connect({ id: 'USER-1', api_key: 'yes_it_is' })
 
-client.on('open', (dat) => console.log(' >> connected and logged in', dat))
+client1.on('open', (dat) => console.log(' >> connected and logged in', dat))
 //client.on('message', (c, dat) => console.log(' >> message form server', c, dat));
-client.on('m:_ignored', (c, dat) => console.log('IGNORED MESSAGE!', c, dat))
-client.on('m:pong', (dat) => { console.log('pong, ok...')})
-client.on('close', (code, reason) => console.log(' >> connection closed', code, reason))
-client.on('error', (e) => console.log(' >> connection error', e))
+client1.on('m:_ignored', (c, dat) => console.log('IGNORED MESSAGE!', c, dat))
+client1.on('m:pong', (dat) => { console.log('pong, ok...', dat)})
+client1.on('close', (code, reason) => console.log(' >> connection closed', code, reason))
+client1.on('error', (e) => console.log(' >> connection error', e))
 
 // not let's talk.
 setInterval(() => {
-  client.send('ping', Math.random())
-  client.send('something', Math.random())
+  client1.send('ping', Math.random())
+  client1.send('something', Math.random())
+}, 1000)
+
+
+const client2 = new WseClient('ws://localhost:3334', {/* classic ws options */ })
+client2.emit_messages_ignored = true
+
+// client object can be re-used btw.
+// no need to create new instance if this one disconnected.
+// just call connect again.
+client2.connect({ id: 'USER-2', api_key: 'yes_it_is' })
+
+client2.on('open', (dat) => console.log(' >> connected and logged in', dat))
+//client.on('message', (c, dat) => console.log(' >> message form server', c, dat));
+client2.on('m:_ignored', (c, dat) => console.log('IGNORED MESSAGE!', c, dat))
+client2.on('m:pong', (dat) => { console.log('pong, ok...', dat)})
+client2.on('close', (code, reason) => console.log(' >> connection closed', code, reason))
+client2.on('error', (e) => console.log(' >> connection error', e))
+
+// not let's talk.
+setInterval(() => {
+  client2.send('ping', Math.random())
+  client2.send('something', Math.random())
 }, 1000)

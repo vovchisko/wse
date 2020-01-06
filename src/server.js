@@ -140,6 +140,27 @@ class WseServer extends EE {
     this.log(`init(); cpu:single;`)
     return self
   }
+
+  /**
+   * Send this message to everyone online
+   * @param c
+   * @param dat
+   */
+  broadcast (c, dat) {
+    for (let id in this.clients) {
+      this.clients[id].send(c, dat)
+    }
+  }
+
+  /**
+   * Similar to forEach
+   * @param cb
+   */
+  each (cb) {
+    for (let id in this.clients) {
+      cb(this.clients[id])
+    }
+  }
 }
 
 class WseClientConnection {
