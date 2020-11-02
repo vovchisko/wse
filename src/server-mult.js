@@ -142,7 +142,7 @@ class WseServerMult extends EE {
 
     })
 
-    this.log(`init(); cpu:${ this.cpu };`)
+    this.log(`init(); cpu:${this.cpu};`)
     return self
   }
 

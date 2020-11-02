@@ -14,6 +14,7 @@ class WseClient extends EE {
     this.emit_message_prefix = 'm:'
     this.emit_messages_ignored = false
     this.reused = 0
+    this.meta = {}
   }
 
   connect (payload, params) {
