@@ -172,6 +172,7 @@ class WseClientConnection {
     this.id = conn.id
     this.conn = conn
     this.wsm = parent_wsm
+    this.meta = {}
   }
 
   /**
