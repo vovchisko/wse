@@ -1,4 +1,4 @@
-class WseDefaultProtocol {
+class WseJSON {
   constructor () {
     this.name = 'wse-default-json'
     this.hi = 'hi'
@@ -17,4 +17,4 @@ class WseDefaultProtocol {
   }
 }
 
-module.exports = WseDefaultProtocol
+export default WseJSON

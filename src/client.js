@@ -1,70 +1,74 @@
-const WseDefaultProtocol = require('./protocol')
-const WSE_REASON = require('./reason')
-const EE = require('eventemitter3')
-const WebSocket = require('isomorphic-ws')
+import WseJSON from './protocol.js'
+import EE      from 'eventemitter3'
+import Sig     from 'a-signal'
+import WS      from 'isomorphic-ws'
 
-class WseClient extends EE {
+class WseClient {
   constructor (url, options, wse_protocol = null) {
-    super()
-    this.is_online = false
-    this.protocol = wse_protocol || new WseDefaultProtocol()
+    this.protocol = wse_protocol || new WseJSON()
     this.url = url
     this.options = options
-    this.emit_message = true
-    this.emit_message_prefix = 'm:'
-    this.emit_messages_ignored = false
     this.reused = 0
-    this.meta = {}
+
+    this.messages = new EE() // event emitter only for messages
+    this.ignored = new Sig() // fires when no listeners fired for the message
+    this.connected = new Sig() // when connected
+    this.ready = new Sig() // when authorised
+    this.error = new Sig()
+    this.closed = new Sig()
+    this.logger = null
+
+    this._ws = null
   }
 
-  connect (payload, params) {
-    this.reused++
-    this.is_online = null
-    this.ws = new WebSocket(this.url, this.protocol.name, this.options)
-    this.ws.onopen = () => this.send(this.protocol.hi, { payload, params })
-    this.ws.onmessage = (m) => this._before_welcome(m)
-    this.ws.onerror = (e) => this.emit('error', e)
-    this.ws.onclose = (event) => {
-      this.is_online = false
-      this.emit('close', event.code, event.reason)
-    }
-    return this
+  // todo: replace params on client meta info
+  connect (payload = '', meta = {}) {
+    return new Promise((resolve, reject) => {
+      this.reused++
+      this._ws = new WS(this.url, this.protocol.name, this.options)
+      this._ws.onopen = () => {
+        this.send(this.protocol.hi, { payload, meta })
+        this.connected.emit(payload, meta)
+      }
+      this._ws.onmessage = (message) => {
+        let m = this.protocol.unpack(message.data)
+        if (m.c === this.protocol.welcome) {
+          this.ready.emit(m.dat)
+          resolve(m.dat)
+        }
+        this._ws.onmessage = this.process_msg
+      }
+      this._ws.onerror = (e) => this.error.emit(e)
+      this._ws.onclose = (event) => {
+        reject(event.reason) //todo: ? if I resolved before, don't reject
+        this.closed.emit(event.code, event.reason)
+      }
+    })
   }
 
-  _before_welcome (message) {
+  process_msg (message) {
     let m = this.protocol.unpack(message.data)
-    this.is_online = true
-    if (m.c === this.protocol.welcome) {
-      this.emit('open', m.dat) //for capability
-      this.emit(this.protocol.welcome, m.dat)
-    }
-    this.ws.onmessage = (msg) => this._data(msg)
+    // fire `ignored` signal if not listeners found for this message
+    return this.messages.emit(m.c, m.dat) || this.ignored.emit(m.c, m.dat)
   }
-
-  _data (message) {
-    let m = this.protocol.unpack(message.data)
-    if (this.emit_message) {
-      if (!this.emit(this.emit_message_prefix + m.c, m.dat) && this.emit_messages_ignored)
-        this.emit(this.emit_message_prefix + '_ignored', m.c, m.dat)
-
-    }
-    this.emit('message', m.c, m.dat)
-  };
 
   send (c, dat) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(this.protocol.pack(c, dat))
+    if (this._ws && this._ws.readyState === WS.OPEN) {
+      this._ws.send(this.protocol.pack(c, dat))
+      this.log('send', c, dat)
     } else {
-      this.emit('error', new Error('socket-not-opened'))
+      this.error.emit('error', new Error('socket-not-opened'))
     }
   }
 
-  close (code = 1000, reason = WSE_REASON.BY_CLIENT) {
-    if (this.ws)
-      this.ws.close(code, reason)
+  close (code = 1000, reason = 'BY_CLIENT') {
+    this.log('closed', code, reason)
+    if (this._ws) this._ws.close(code, reason)
   }
+
+  log () {
+    if (this.logger) this.logger(arguments)
+  };
 }
 
-module.exports = WseClient
-
-
+export default WseClient
