@@ -36,7 +36,7 @@ class WseClient {
           this.ready.emit(m.dat)
           resolve(m.dat)
         }
-        this._ws.onmessage = this.process_msg
+        this._ws.onmessage = (message) => { this.process_msg(message) }
       }
       this._ws.onerror = (e) => this.error.emit(e)
       this._ws.onclose = (event) => {

@@ -1,16 +1,9 @@
-import { WseClient, WseServer } from '../node.js'
-import { execute }              from './_execute.js'
+import { execute } from './_execute.js'
 
-import { on_auth, VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
+import { create_pair, VALID_SECRET } from './_helpers.js'
 
-execute('Connect and ready', async (success, fail) => {
-  const server = new WseServer({ port: WS_TEST_PORT }, on_auth)
-  const client = new WseClient(`ws://localhost:${ WS_TEST_PORT }`, {})
-
-  if(!process.send) {
-    client.logger = (args) => console.log('CLIENT::', ...args)
-    server.logger = (args) => console.log('SERVER::', ...args)
-  }
+execute('connect and ready', async (success, fail) => {
+  const { server, client } = create_pair()
 
   server.init()
 

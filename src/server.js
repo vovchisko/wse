@@ -93,7 +93,7 @@ class WseServer {
 
       client.send(this.protocol.welcome, welcome_payload)
 
-      this.joined.emit(client, msg.dat)
+      this.joined.emit(client, msg.dat.meta || undefined)
     })
   }
 
@@ -180,6 +180,7 @@ class WseClientConnection {
   send (c, dat) {
     if (this.conn && this.conn.readyState === WebSocket.OPEN) {
       this.conn.send(this.server.protocol.pack(c, dat))
+      this.server.log('send to', this.id, c, dat)
       return true
     } else {
       return false

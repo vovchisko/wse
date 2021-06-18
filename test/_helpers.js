@@ -1,3 +1,5 @@
+import { WseClient, WseServer } from '../node.js'
+
 let USER_ID_COUNTER = 100
 
 export const VALID_SECRET = 'valid-secret'
@@ -19,6 +21,17 @@ export function on_auth (payload, authorize) {
   }
 }
 
+export function create_pair () {
+  const server = new WseServer({ port: WS_TEST_PORT }, on_auth)
+  const client = new WseClient(`ws://localhost:${ WS_TEST_PORT }`, {})
+
+  if (!process.send) {
+    server.logger = (args) => console.log('SERVER::', ...args)
+    client.logger = (args) => console.log('CLIENT::', ...args)
+  }
+
+  return { server, client }
+}
 
 export function wait (delay) {
   return new Promise(function (resolve) {

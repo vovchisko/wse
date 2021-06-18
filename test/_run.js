@@ -21,13 +21,8 @@ export function test (script) {
     const c = child_process.fork(script, { silent: false })
 
     let result = ''
-   // let stdout = ''
-   // let stderr = ''
 
     c.uid = low_grade_uid()
-
-   // c.stdout.on('data', chunk => stdout += chunk)
-   // c.stderr.on('error', chunk => stderr += chunk)
 
     c.on('message', ({ msg, ...dat }) => {
       if (msg === 'start') {
@@ -36,10 +31,9 @@ export function test (script) {
       if (msg === 'finish') {
         const color = dat.result === 'success' ? pal_cyan : pal_yellow
         Object.assign(tests.get(c.uid), { dat })
-        result += (`[${ color }${ dat.result }${ pal_normal }] `).padEnd(16 + color.length, ' ')
-        result += `${ dat.name }: `
-        result += `delta: ${ (dat.delta / 1000).toFixed(3) }s, `
-        result += `${ dat.note }`
+        result += (`[${ color }${ dat.result }${ pal_normal }] `).padEnd(15 + color.length, ' ')
+        result += `${ dat.name } >> ${ dat.note } / `
+        result += `Δ=${ (dat.delta).toFixed(2) }${ dat.delta_precision_sym } / `
       }
     })
     c.on('error', (err) => {
@@ -47,12 +41,9 @@ export function test (script) {
       reject()
     })
     c.on('exit', (code) => {
-      result += ` / exit(${ code })`
+      const color = code === 0 ? pal_cyan : pal_yellow
+      result += `[ ${ color }${ code === 0 ? 'ok' : 'fail' }${ pal_normal } ]`
       console.log(result)
-      if (code !== 0) {
-      //  console.log(stdout)
-      //  console.error(stderr)
-      }
       resolve()
     })
   })
@@ -60,5 +51,11 @@ export function test (script) {
 
 (async () => {
   await test('./connect.js')
+  await test('./disconnect.js')
+  await test('./invalid-auth.js')
   await test('./client2server.js')
+  await test('./server2client.js')
+  await test('./meta.js')
+  await test('./count-10.js')
+  await test('./count-1001.js')
 })()
