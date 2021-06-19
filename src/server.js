@@ -15,7 +15,7 @@ class WseServer {
     this.protocol = wse_protocol || new WseJSON()
     this.ws_params = ws_params
     this.ws_server = WebSocket.Server
-    this.on_auth = on_auth || ((payload, meta) => {
+    this.on_auth = on_auth || ((payload, authorize, meta) => {
       throw new Error('params.on_auth function not specified!')
     })
 
@@ -67,8 +67,7 @@ class WseServer {
 
     if (msg.c !== this.protocol.hi) throw new Error('only-hi-message-allowed') // todo: kick
 
-    this.on_auth(msg.dat.payload, (id, welcome_payload) => {
-
+    const authorize = (id, welcome_payload) => {
       this.log(msg.dat.payload, id, welcome_payload)
       if (!id) {
         conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
@@ -94,7 +93,9 @@ class WseServer {
       client.send(this.protocol.welcome, welcome_payload)
 
       this.joined.emit(client, msg.dat.meta || undefined)
-    })
+    }
+
+    this.on_auth(msg.dat.payload, authorize, msg.dat.meta || undefined)
   }
 
   init () {

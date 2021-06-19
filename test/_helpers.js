@@ -9,11 +9,11 @@ export const WS_TEST_PORT = 64000
 // auth procedure is all up to you,
 // the only required is pass user_id to resolve()
 // let's say we expect this ID from user
-export function on_auth (payload, authorize) {
+export function on_auth (payload, authorize, meta) {
   if (payload === VALID_SECRET) {
     // if client looks valid - assign id to it using resolution function.
     // only after this you'll get message events.
-    authorize('USR-' + (USER_ID_COUNTER++), { hey: 'some additional data for the client' })
+    authorize('USR-' + ++USER_ID_COUNTER, { hey: 'some additional data for the client' })
   } else {
     // user will be disconnected instantly
     // no events fired on the server side
@@ -31,6 +31,11 @@ export function create_pair () {
   }
 
   return { server, client }
+}
+
+export function create_clients_swarm (clients = 2) {
+  // todo: this will create a client-s swarm
+  return { server: null, clients: []}
 }
 
 export function wait (delay) {
