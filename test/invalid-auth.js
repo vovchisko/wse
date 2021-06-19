@@ -3,7 +3,7 @@ import { execute } from './_execute.js'
 import { create_pair, INVALID_SECRET } from './_helpers.js'
 import { WSE_REASON }                  from '../node.js'
 
-execute('unauthorised connection', async (success, fail) => {
+execute('not authorised connection', async (success, fail) => {
   const { server, client } = create_pair()
 
   server.init()

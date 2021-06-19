@@ -14,7 +14,7 @@ execute('invalid message', async (success, fail) => {
     if (!process.send) console.log('FAKE_WS::', 'close', code, reason)
 
     code === 1000 && reason === WSE_REASON.PROTOCOL_ERR
-        ? success('client diconnected as expected')
+        ? success('client disconnected as expected')
         : fail('invalid code or reason on disconnect')
   })
 

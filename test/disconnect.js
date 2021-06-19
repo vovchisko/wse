@@ -7,7 +7,6 @@ execute('client connection closure', async (success, fail) => {
 
   server.init()
 
-
   client.closed.on((code, reason) => {
     code === 1002 && reason === 'CUSTOM_REASON'
         ? success('closed well')
