@@ -15,12 +15,7 @@ execute('client connection closure', async (success, fail) => {
   })
   client.ready.on(() => client.close(1002, 'CUSTOM_REASON'))
 
-  try {
     await client.connect(VALID_SECRET, { client_meta: 1 })
-  } catch (err) {
-    fail('error in try-catch')
-    console.err(err.reason)
-  }
 })
 
 

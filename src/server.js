@@ -10,13 +10,13 @@ const CLIENT_VALIDATING = 1
 const CLIENT_VALID = 2
 
 class WseServer {
-  constructor (ws_params = {}, on_auth, wse_protocol = null) {
+  constructor (ws_params = {}, auth_handler, wse_protocol = null) {
     this.clients = new Map(/* { ID: WseClientConnection } */)
     this.protocol = wse_protocol || new WseJSON()
     this.ws_params = ws_params
     this.ws_server = WebSocket.Server
-    this.on_auth = on_auth || ((payload, authorize, meta) => {
-      throw new Error('params.on_auth function not specified!')
+    this.auth_handler = auth_handler || ((payload, authorize, meta = {}) => {
+      throw new Error('params.auth_handler function not specified!')
     })
 
     this.joined = new Sig()
@@ -87,15 +87,15 @@ class WseServer {
         return
       }
 
-      const client = new WseClientConnection(this, conn, msg.dat.meta)
+      const client = new WseClientConnection(this, conn, msg.dat.meta || {})
       this.clients.set(client.id, client)
 
       client.send(this.protocol.welcome, welcome_payload)
 
-      this.joined.emit(client, msg.dat.meta || undefined)
+      this.joined.emit(client, msg.dat.meta || {})
     }
 
-    this.on_auth(msg.dat.payload, authorize, msg.dat.meta || undefined)
+    this.auth_handler(msg.dat.payload, authorize, msg.dat.meta || {})
   }
 
   init () {
@@ -104,13 +104,17 @@ class WseServer {
       this.handle_connection(conn, req)
 
       conn.on('message', (message) => {
-        // todo: maybe kick this dude. it's might not be allowed
-        // to send messages before getting welcome
+        // todo: ignore or kick?
         if (conn.valid_stat === CLIENT_VALIDATING) return
 
-        let msg = this.protocol.unpack(message)
-        if (!msg) {
-          conn.close(1000, WSE_REASON.PROTOCOL_ERR)
+        let msg = ''
+        try {
+          msg = this.protocol.unpack(message)
+        } catch (err) {
+          this.error.emit(err, (conn.id || 'unsigned') + ' sent broken message')
+          conn.id
+              ? this.drop_client(1000, WSE_REASON.PROTOCOL_ERR)
+              : conn.close(1000, WSE_REASON.PROTOCOL_ERR)
           return
         }
 
@@ -118,13 +122,13 @@ class WseServer {
           case CLIENT_VALID:
             return this.handle_valid_message(conn, msg)
           case CLIENT_NOOB:
-            this.handle_noob_message(conn, msg)
+            return this.handle_noob_message(conn, msg)
         }
       })
 
       conn.on('close', (code, reason) => {
         this.disconnected.emit(conn, code, reason)
-        this.log('close', code, reason)
+        this.log('disconnected', conn.id, code, reason)
         if (conn.id && conn.valid_stat === CLIENT_VALID && this.clients.has(conn.id)) {
           const client = this.clients.get(conn.id)
 

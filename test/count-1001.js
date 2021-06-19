@@ -23,11 +23,6 @@ execute('count together to 1001', async (success, fail) => {
 
   server.init()
 
-  try {
     await client.connect(VALID_SECRET)
     client.send('count', client_var)
-  } catch (err) {
-    fail('error in try-catch')
-    console.err(err.reason)
-  }
 })

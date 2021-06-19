@@ -14,7 +14,3 @@ execute('connect and ready', async (success, fail) => {
 
   await client.connect(VALID_SECRET, { client_meta: 1 })
 })
-
-
-
-

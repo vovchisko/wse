@@ -51,11 +51,16 @@ export function test (script) {
 
 (async () => {
   await test('./connect.js')
+  await test('./client-concurrency.js')
   await test('./disconnect.js')
   await test('./invalid-auth.js')
   await test('./client2server.js')
   await test('./server2client.js')
+  await test('./invalid-hi-err.js')
+  await test('./invalid-hi-drop.js')
   await test('./meta.js')
   await test('./count-10.js')
   await test('./count-1001.js')
+  await test('./swarm-connect.js')
+  await test('./swarm-disconnect.js')
 })()

@@ -10,13 +10,9 @@ execute('client > server', async (success, fail) => {
         ? success('client sent message')
         : fail('invalid data from client')
   })
+
   server.init()
 
-  try {
-    await client.connect(VALID_SECRET, { client_meta: 1 })
-    client.send('test-message', { value: 42 })
-  } catch (err) {
-    fail('error in try-catch')
-    console.err(err.reason)
-  }
+  await client.connect(VALID_SECRET, { client_meta: 1 })
+  client.send('test-message', { value: 42 })
 })

@@ -6,17 +6,12 @@ execute('client meta on join', async (success, fail) => {
   const { server, client } = create_pair()
 
   server.joined.on((client, meta) => {
-    meta.client_meta === 123
+    meta.test_value === 123
         ? success('meta is correct')
         : fail('invalid meta on join')
   })
 
   server.init()
 
-  try {
-    await client.connect(VALID_SECRET, { client_meta: 123 })
-  } catch (err) {
-    fail('error in try-catch')
-    console.err(err.reason)
-  }
+  await client.connect(VALID_SECRET, { test_value: 123 })
 })

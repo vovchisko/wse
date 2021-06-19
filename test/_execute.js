@@ -43,8 +43,11 @@ const complete = (note) => {
   test.note = note
   test.delta = now(test.delta_precision) - start_time
 
-  if (process.send)
+  if (process.send) {
     process.send({ msg: 'finish', ...test })
+  } else {
+    console.log(test)
+  }
 
   process.exit(test.exit_code)
 }

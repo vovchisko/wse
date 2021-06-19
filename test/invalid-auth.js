@@ -14,12 +14,7 @@ execute('unauthorised connection', async (success, fail) => {
         : fail('invalid close reason')
   })
 
-  try {
     await client.connect(INVALID_SECRET)
-  } catch (err) {
-    fail('error in try-catch')
-    console.err(err.reason)
-  }
 })
 
 

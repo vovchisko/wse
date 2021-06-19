@@ -17,10 +17,5 @@ execute('server > client', async (success, fail) => {
 
   server.init()
 
-  try {
-    await client.connect(VALID_SECRET, { client_meta: 1 })
-  } catch (err) {
-    fail('error in try-catch')
-    console.err(err.reason)
-  }
+  await client.connect(VALID_SECRET, { client_meta: 1 })
 })
