@@ -23,6 +23,6 @@ execute('count together to 10', async (success, fail) => {
 
   server.init()
 
-    await client.connect(VALID_SECRET)
-    client.send('count', client_var)
+  await client.connect(VALID_SECRET)
+  client.send('count', client_var)
 })

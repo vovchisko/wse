@@ -14,7 +14,7 @@ execute('client connection closure', async (success, fail) => {
   })
   client.ready.on(() => client.close(1002, 'CUSTOM_REASON'))
 
-    await client.connect(VALID_SECRET, { client_meta: 1 })
+  await client.connect(VALID_SECRET, { client_meta: 1 })
 })
 
 

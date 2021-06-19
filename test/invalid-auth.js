@@ -14,7 +14,7 @@ execute('not authorised connection', async (success, fail) => {
         : fail('invalid close reason')
   })
 
-    await client.connect(INVALID_SECRET)
+  await client.connect(INVALID_SECRET)
 })
 
 
