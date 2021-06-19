@@ -4,10 +4,10 @@ import Sig     from 'a-signal'
 import WS      from 'isomorphic-ws'
 
 class WseClient {
-  constructor (url, options, wse_protocol = null) {
-    this.protocol = wse_protocol || new WseJSON()
+  constructor ({ url, protocol = WseJSON, ...ws_options }) {
+    this.protocol = new protocol()
     this.url = url
-    this.options = options
+    this.ws_options = ws_options
     this.reused = 0
 
     this.messages = new EE() // event emitter only for messages
@@ -25,7 +25,8 @@ class WseClient {
   connect (payload = '', meta = {}) {
     return new Promise((resolve, reject) => {
       this.reused++
-      this._ws = new WS(this.url, this.protocol.name, this.options)
+      this._ws = new WS(this.url, this.protocol.name, this.ws_options)
+
       this._ws.onopen = () => {
         this.send(this.protocol.hi, { payload, meta })
         this.connected.emit(payload, meta)

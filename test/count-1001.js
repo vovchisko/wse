@@ -24,5 +24,5 @@ execute('count together to 1001', async (success, fail) => {
   server.init()
 
   await client.connect(VALID_SECRET)
-  client.send('count', client_var)
-})
+  client.send('count', { client_var })
+}, 1000)

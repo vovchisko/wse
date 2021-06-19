@@ -10,14 +10,30 @@ const CLIENT_VALIDATING = 1
 const CLIENT_VALID = 2
 
 class WseServer {
-  constructor (ws_params = {}, auth_handler, wse_protocol = null) {
+  /**
+   * Manage incoming connections.
+   *
+   * @callback incoming_handler
+   * @param {string} payload JWT or any other type of secret
+   * @param {function} authorize call it with user ID or any other identifier. falsy argument will reject connection.
+   * @param {object} meta optional data from the client
+   */
+
+  /**
+   * WseServer class.
+   *
+   * @param {object} options see https://github.com/websockets/ws/#readme
+   * @param {function|incoming_handler} options.incoming will be called for each new connection
+   * @param {object} [options.protocol=WseJSON] overrides `ws` protocol with an object
+   */
+  constructor ({ protocol = WseJSON, incoming, ...ws_params }) {
+    if (!incoming) throw new Error('incoming handler is missing!')
+
     this.clients = new Map(/* { ID: WseClientConnection } */)
-    this.protocol = wse_protocol || new WseJSON()
+    this.protocol = new protocol()
     this.ws_params = ws_params
     this.ws_server = WebSocket.Server
-    this.auth_handler = auth_handler || ((payload, authorize, meta = {}) => {
-      throw new Error('params.auth_handler function not specified!')
-    })
+    this.incoming_handler = incoming
 
     this.joined = new Sig()
     this.left = new Sig()
@@ -67,7 +83,7 @@ class WseServer {
 
     if (msg.c !== this.protocol.hi) throw new Error('only-hi-message-allowed') // todo: kick
 
-    const authorize = (id, welcome_payload) => {
+    const resolve = (id, welcome_payload) => {
       this.log(msg.dat.payload, id, welcome_payload)
       if (!id) {
         conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
@@ -95,7 +111,7 @@ class WseServer {
       this.joined.emit(client, msg.dat.meta || {})
     }
 
-    this.auth_handler(msg.dat.payload, authorize, msg.dat.meta || {})
+    this.incoming_handler(msg.dat.payload, resolve, msg.dat.meta || {})
   }
 
   init () {

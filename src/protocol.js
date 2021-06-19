@@ -12,8 +12,8 @@ class WseJSON {
     })
   }
 
-  unpack (string) {
-    return JSON.parse(string)
+  unpack (encoded) {
+    return JSON.parse(encoded)
   }
 }
 

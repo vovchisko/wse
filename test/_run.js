@@ -36,10 +36,12 @@ export function test (script) {
         result += `Δ=${ (dat.delta).toFixed(2) }${ dat.delta_precision_sym } / `
       }
     })
+
     c.on('error', (err) => {
       console.error(err)
       reject()
     })
+
     c.on('exit', (code) => {
       const color = code === 0 ? pal_cyan : pal_yellow
       result += `[ ${ color }${ code === 0 ? 'ok' : 'fail' }${ pal_normal } ]`
@@ -59,8 +61,8 @@ export function test (script) {
   await test('./invalid-hi-err.js')
   await test('./invalid-hi-drop.js')
   await test('./meta.js')
-  await test('./count-10.js')
-  await test('./count-1001.js')
   await test('./swarm-connect.js')
   await test('./swarm-disconnect.js')
+  await test('./count-10.js')
+  await test('./count-1001.js')
 })()
