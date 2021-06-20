@@ -2,11 +2,11 @@
   "name": "wse",
   "version": "2.0.5",
   "description": "Suspicious wrapper for ws with auth and custom protocol support.",
-  "type": "module",
   "main": "node.js",
   "browser": "browser.js",
+  "type": "module",
   "scripts": {
-    "test": "node test/_run.js"
+    "test": "node test.js"
   },
   "repository": {
     "type": "git",
@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "bufferutil": "^4.0.1",
+    "test-a-bit": "^1.0.0",
     "utf-8-validate": "^5.0.2"
   }
 }

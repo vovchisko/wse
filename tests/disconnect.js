@@ -1,4 +1,4 @@
-import { execute } from './_execute.js'
+import { execute } from 'test-a-bit'
 
 import { create_pair, VALID_SECRET } from './_helpers.js'
 

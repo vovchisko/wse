@@ -1,4 +1,4 @@
-import { execute }                     from './_execute.js'
+import { execute }                     from 'test-a-bit'
 import { create_server, WS_TEST_PORT } from './_helpers.js'
 import WS                              from 'ws'
 import { WSE_REASON }                  from '../node.js'
