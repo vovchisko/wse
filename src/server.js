@@ -5,7 +5,7 @@ import Sig       from 'a-signal'
 import WseJSON    from './protocol.js'
 import WSE_REASON from './reason.js'
 
-const CLIENT_NOOB = 0
+const CLIENT_STRANGER = 0
 const CLIENT_VALIDATING = 1
 const CLIENT_VALID = 2
 
@@ -13,42 +13,46 @@ class WseServer {
   /**
    * Manage incoming connections.
    *
-   * @callback incoming_handler
-   * @param {string} payload JWT or any other type of secret
-   * @param {function} authorize call it with user ID or any other identifier. falsy argument will reject connection.
-   * @param {object} meta optional data from the client
+   * @callback WseServer.incoming_handler
+   * @param {String} params.payload JWT or any other type of secret
+   * @param {Object} params.meta optional data from the client
+   * @param {Function} params.resolve call it with user ID or any other identifier. falsy argument will reject connection.
    */
 
   /**
    * WseServer class.
    *
-   * @param {object} options see https://github.com/websockets/ws/#readme
-   * @param {function|incoming_handler} options.incoming will be called for each new connection
-   * @param {object} [options.protocol=WseJSON] overrides `ws` protocol with an object
+   * @param {Object} options see https://github.com/websockets/ws/#readme.
+   * @param {Function|WseServer.incoming_handler} options.incoming Will be called for each new connection.
+   * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
+   * @param {WebSocket.Server} [options.ws_server=WebSocket.Server] Tt is possible to override `ws` implementation. Use with caution.
    */
-  constructor ({ protocol = WseJSON, incoming, ...ws_params }) {
+  constructor ({
+    protocol = WseJSON,
+    incoming,
+    ws_server = WebSocket.Server,
+    ...ws_params
+  }) {
     if (!incoming) throw new Error('incoming handler is missing!')
 
     this.clients = new Map(/* { ID: WseClientConnection } */)
     this.protocol = new protocol()
     this.ws_params = ws_params
-    this.ws_server = WebSocket.Server
+    this.ws_server = ws_server
     this.incoming_handler = incoming
 
     this.joined = new Sig()
     this.left = new Sig()
-
     this.connected = new Sig()
     this.disconnected = new Sig()
     this.error = new Sig()
 
-    this.messages = new EE()
+    this.channel = new EE()
 
     this.logger = null
   }
 
   handle_connection (conn, req) {
-
     if (conn.protocol !== this.protocol.name) {
       return conn.close(1000, WSE_REASON.PROTOCOL_ERR)
     }
@@ -56,7 +60,7 @@ class WseServer {
     this.log('handle_connection', conn.protocol)
 
     conn.id = null
-    conn.valid_stat = CLIENT_NOOB
+    conn.valid_stat = CLIENT_STRANGER
     conn.meta = {}
 
     // RESOLVING IPV4 REMOTE ADDR
@@ -70,21 +74,23 @@ class WseServer {
   }
 
   handle_valid_message (conn, msg) {
-    this.log('handle_valid_message', msg)
+    this.log(conn.id, 'handle_valid_message', msg)
     if (!conn.id) throw new Error('impossible!') // todo: any other way?
     const client = this.clients.get(conn.id)
-    this.messages.emit(msg.c, client, msg.dat)
+    this.channel.emit(msg.c, client, msg.dat)
   }
 
-  handle_noob_message (conn, msg) {
-    this.log('handle_noob_message', msg)
+  handle_stranger_message (conn, msg) {
+    this.log('handle_stranger_message', msg)
 
     conn.valid_stat = CLIENT_VALIDATING
 
     if (msg.c !== this.protocol.hi) throw new Error('only-hi-message-allowed') // todo: kick
 
+    // todo: why it's here? make a method out of if
     const resolve = (id, welcome_payload) => {
-      this.log(msg.dat.payload, id, welcome_payload)
+      this.log(id, 'resolved', msg.dat.payload, id, welcome_payload)
+
       if (!id) {
         conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
         return
@@ -96,11 +102,9 @@ class WseServer {
       let existing_client = this.clients.get(conn.id)
 
       if (existing_client) {
-        // don't forget to unsubscribe from all the things?
         existing_client.drop(WSE_REASON.OTHER_CLIENT_CONNECTED)
-        // can we keep new connection?
-        conn.close(1000, WSE_REASON.OTHER_CLIENT_CONNECTED)
-        return
+        // conn.close(1000, WSE_REASON.OTHER_CLIENT_CONNECTED)
+        // return
       }
 
       const client = new WseClientConnection(this, conn, msg.dat.meta || {})
@@ -111,7 +115,11 @@ class WseServer {
       this.joined.emit(client, msg.dat.meta || {})
     }
 
-    this.incoming_handler(msg.dat.payload, resolve, msg.dat.meta || {})
+    this.incoming_handler({
+      payload: msg.dat.payload,
+      meta: msg.dat.meta || {},
+      resolve,
+    })
   }
 
   init () {
@@ -137,14 +145,14 @@ class WseServer {
         switch (conn.valid_stat) {
           case CLIENT_VALID:
             return this.handle_valid_message(conn, msg)
-          case CLIENT_NOOB:
-            return this.handle_noob_message(conn, msg)
+          case CLIENT_STRANGER:
+            return this.handle_stranger_message(conn, msg)
         }
       })
 
       conn.on('close', (code, reason) => {
         this.disconnected.emit(conn, code, reason)
-        this.log('disconnected', conn.id, code, reason)
+        this.log(conn.id, 'disconnected', code, reason)
         if (conn.id && conn.valid_stat === CLIENT_VALID && this.clients.has(conn.id)) {
           const client = this.clients.get(conn.id)
 
@@ -165,6 +173,8 @@ class WseServer {
 
   drop_client (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
+
+    this.log(id, 'dropped', reason)
 
     const client = this.clients.get(id)
 

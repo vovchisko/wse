@@ -5,7 +5,7 @@ import { create_pair, VALID_SECRET } from './_helpers.js'
 execute('server > client', async (success, fail) => {
   const { server, client } = create_pair()
 
-  client.messages.on('test-message', (dat) => {
+  client.channel.on('test-message', (dat) => {
     dat.value === 42
         ? success('server sent message')
         : fail('invalid data from server')

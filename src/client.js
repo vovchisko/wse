@@ -10,7 +10,7 @@ class WseClient {
     this.ws_options = ws_options
     this.reused = 0
 
-    this.messages = new EE() // event emitter only for messages
+    this.channel = new EE() // event emitter only for messages
     this.ignored = new Sig() // fires when no listeners fired for the message
     this.connected = new Sig() // when connected
     this.ready = new Sig() // when authorised
@@ -50,7 +50,7 @@ class WseClient {
   process_msg (message) {
     let m = this.protocol.unpack(message.data)
     // fire `ignored` signal if not listeners found for this message
-    return this.messages.emit(m.c, m.dat) || this.ignored.emit(m.c, m.dat)
+    return this.channel.emit(m.c, m.dat) || this.ignored.emit(m.c, m.dat)
   }
 
   send (c, dat) {

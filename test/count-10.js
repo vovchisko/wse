@@ -6,14 +6,14 @@ execute('count together to 10', async (success, fail) => {
   const { server, client } = create_pair()
 
   let server_var = 0
-  server.messages.on('count', (c, dat) => {
+  server.channel.on('count', (c, dat) => {
     server_var = dat.count
     server_var += 1
     c.send('count', { count: server_var })
   })
 
   let client_var = 0
-  client.messages.on('count', (dat) => {
+  client.channel.on('count', (dat) => {
     if (dat.count >= 10) return success(`${ dat.count }!`)
 
     client_var = dat.count
