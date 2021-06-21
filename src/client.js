@@ -21,7 +21,6 @@ class WseClient {
     this._ws = null
   }
 
-  // todo: replace params on client meta info
   connect (payload = '', meta = {}) {
     return new Promise((resolve, reject) => {
       this.reused++
@@ -37,7 +36,7 @@ class WseClient {
           this.ready.emit(m.dat)
           resolve(m.dat)
         }
-        this._ws.onmessage = (message) => { this.process_msg(message) }
+        this._ws.onmessage = (message) => { this._process_msg(message) }
       }
       this._ws.onerror = (e) => this.error.emit(e)
       this._ws.onclose = (event) => {
@@ -47,7 +46,7 @@ class WseClient {
     })
   }
 
-  process_msg (message) {
+  _process_msg (message) {
     let m = this.protocol.unpack(message.data)
     // fire `ignored` signal if not listeners found for this message
     return this.channel.emit(m.c, m.dat) || this.ignored.emit(m.c, m.dat)
@@ -56,18 +55,18 @@ class WseClient {
   send (c, dat) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack(c, dat))
-      this.log('send', c, dat)
+      this._log('send', c, dat)
     } else {
       this.error.emit('error', new Error('socket-not-opened'))
     }
   }
 
   close (code = 1000, reason = 'BY_CLIENT') {
-    this.log('closed', code, reason)
+    this._log('closed', code, reason)
     if (this._ws) this._ws.close(code, reason)
   }
 
-  log () {
+  _log () {
     if (this.logger) this.logger(arguments)
   };
 }
