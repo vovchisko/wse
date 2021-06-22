@@ -9,7 +9,7 @@ const CLIENT_STRANGER = 0
 const CLIENT_VALIDATING = 1
 const CLIENT_VALID = 2
 
-class WseServer {
+class WseMServer {
   /**
    * Manage incoming connections.
    *
@@ -31,6 +31,7 @@ class WseServer {
     protocol = WseJSON,
     incoming,
     ws_server = WebSocket.Server,
+    cpu_limit = 1,
     ...ws_params
   }) {
     if (!incoming) throw new Error('incoming handler is missing!')
