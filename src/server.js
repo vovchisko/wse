@@ -31,6 +31,7 @@ class WseServer {
     protocol = WseJSON,
     incoming,
     ws_server = WebSocket.Server,
+    cpu_limit = 2,
     ...ws_params
   }) {
     if (!incoming) throw new Error('incoming handler is missing!')
@@ -41,6 +42,7 @@ class WseServer {
     this.ws_server = ws_server
     this.incoming_handler = incoming
 
+    this.cpu_limit = cpu_limit
     this.joined = new Sig()
     this.left = new Sig()
     this.connected = new Sig()
@@ -108,7 +110,7 @@ class WseServer {
         // return
       }
 
-      const client = new WseClientConnection(this, conn, msg.dat.meta || {})
+      const client = new WseClient(this, conn, msg.dat.meta || {})
       this.clients.set(client.id, client)
 
       client.send(this.protocol.welcome, welcome_payload)
@@ -190,7 +192,7 @@ class WseServer {
 }
 
 
-class WseClientConnection {
+class WseClient {
   /**
    * @param {WseServer} server - wsm instance
    * @param {WebSocket} conn - ws connection
@@ -201,6 +203,10 @@ class WseClientConnection {
     this.conn = conn
     this.server = server
     this.meta = meta
+  }
+
+  add_connection(conn, instance) {
+``
   }
 
   /**
