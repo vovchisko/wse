@@ -31,7 +31,6 @@ class WseServer {
     protocol = WseJSON,
     incoming,
     ws_server = WebSocket.Server,
-    cpu_limit = 2,
     ...ws_params
   }) {
     if (!incoming) throw new Error('incoming handler is missing!')
@@ -42,7 +41,6 @@ class WseServer {
     this.ws_server = ws_server
     this.incoming_handler = incoming
 
-    this.cpu_limit = cpu_limit
     this.joined = new Sig()
     this.left = new Sig()
     this.connected = new Sig()

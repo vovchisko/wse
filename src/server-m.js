@@ -13,17 +13,17 @@ class WseMServer {
   /**
    * Manage incoming connections.
    *
-   * @callback WseServer.incoming_handler
+   * @callback WseMServer.incoming_handler
    * @param {String} params.payload JWT or any other type of secret
    * @param {Object} params.meta optional data from the client
    * @param {Function} params.resolve call it with user ID or any other identifier. falsy argument will reject connection.
    */
 
   /**
-   * WseServer class.
+   * WseMServer class.
    *
    * @param {Object} options see https://github.com/websockets/ws/#readme.
-   * @param {Function|WseServer.incoming_handler} options.incoming Will be called for each new connection.
+   * @param {Function|WseMServer.incoming_handler} options.incoming Will be called for each new connection.
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    * @param {WebSocket.Server} [options.ws_server=WebSocket.Server] Tt is possible to override `ws` implementation. Use with caution.
    */
@@ -193,7 +193,7 @@ class WseMServer {
 
 class WseClientConnection {
   /**
-   * @param {WseServer} server - wsm instance
+   * @param {WseMServer} server - wsm instance
    * @param {WebSocket} conn - ws connection
    * @param {object} meta - object with user-defined data
    */
@@ -225,4 +225,4 @@ class WseClientConnection {
   }
 }
 
-export default WseServer
+export default WseMServer
