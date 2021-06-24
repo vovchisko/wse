@@ -143,6 +143,11 @@ class WseServer {
           return
         }
 
+
+        // todo: make all connections has client ID and connection_id.
+        //       client ID resolves in the auth resolver.
+        //       connections ID gives automatically and should be unique
+        //       (maybe be WS does it, but we can't be sure for the browser)
         switch (conn.valid_stat) {
           case CLIENT_VALID:
             return this.handle_valid_message(conn, msg)
@@ -172,6 +177,8 @@ class WseServer {
     if (this.logger) this.logger(arguments)
   };
 
+
+  // todo: this will drop client entirely with all the connections
   drop_client (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
 
@@ -180,8 +187,8 @@ class WseServer {
     const client = this.clients.get(id)
 
     this.disconnected.emit(client.conn, 1000, reason)
-    this.left.emit(client, 1000, reason)
 
+    this.left.emit(client, 1000, reason)
     this.clients.delete(client.id)
 
     client.conn.removeAllListeners()
@@ -203,17 +210,23 @@ class WseClient {
     this.meta = meta
   }
 
-  add_connection(conn, instance) {
-``
+  add_conn (conn) {
+    // add connection to anm existing client instance
+  }
+
+  drop_conn (conn) {
+    // drop connection
   }
 
   /**
    * Send a message to the client
    * @param {string} c - message id
    * @param {string|number|object} dat - payload
+   * @param {string} conn_id identifier of the specific connection. omit it to send message for all connections of this client.
    * @returns {boolean} - true if connection was opened, false - if not.
    */
-  send (c, dat) {
+  send (c, dat, conn_id = '') {
+    // send the message to all of the clients.
     if (this.conn && this.conn.readyState === WebSocket.OPEN) {
       this.conn.send(this.server.protocol.pack(c, dat))
       this.server.log('send to', this.id, c, dat)
@@ -223,6 +236,7 @@ class WseClient {
     }
   }
 
+  // todo: this hould drop exact connection, not all of them.
   drop (reason = WSE_REASON.NO_REASON) {
     this.server.drop_client(this.id, reason)
   }
