@@ -28,5 +28,5 @@ execute('cpu_limit = 2', async (success, fail) => {
 
   await client1.connect(VALID_SECRET, { user_id: 'UID1', client: 1 })
   await client2.connect(VALID_SECRET, { user_id: 'UID1', client: 2 })
-  await client2.connect(VALID_SECRET, { user_id: 'UID1', client: 3 })
+  await client3.connect(VALID_SECRET, { user_id: 'UID1', client: 3 })
 })
