@@ -59,7 +59,7 @@ class WseServer {
 
     this.log('handle_connection', conn.protocol)
 
-    conn.id = null
+    conn.client_id = null
     conn.valid_stat = CLIENT_STRANGER
     conn.meta = {}
 
@@ -69,14 +69,12 @@ class WseServer {
 
     // CAN BE OVERRIDDEN BY META
     conn.pub_host = conn.remote_addr
-
-    this.connected.emit(conn)
   }
 
   handle_valid_message (conn, msg) {
-    this.log(conn.id, 'handle_valid_message', msg)
-    if (!conn.id) throw new Error('impossible!') // todo: any other way?
-    const client = this.clients.get(conn.id)
+    this.log(conn.client_id, 'handle_valid_message', msg)
+    if (!conn.client_id) throw new Error('impossible!') // todo: any other way?
+    const client = this.clients.get(conn.client_id)
     this.channel.emit(msg.c, client, msg.dat)
   }
 
@@ -96,10 +94,10 @@ class WseServer {
         return
       }
 
-      conn.id = id
+      conn.client_id = id
       conn.valid_stat = CLIENT_VALID
 
-      let existing_client = this.clients.get(conn.id)
+      let existing_client = this.clients.get(conn.client_id)
 
       if (existing_client) {
         existing_client.drop(WSE_REASON.OTHER_CLIENT_CONNECTED)
@@ -113,6 +111,7 @@ class WseServer {
 
       client.send(this.protocol.welcome, welcome_payload)
 
+      this.connected.emit(conn)
       this.joined.emit(client, msg.dat.meta || {})
     }
 
@@ -136,8 +135,8 @@ class WseServer {
         try {
           msg = this.protocol.unpack(message)
         } catch (err) {
-          this.error.emit(err, (conn.id || 'unsigned') + ' sent broken message')
-          conn.id
+          this.error.emit(err, (conn.client_id || 'unsigned') + ' sent broken message')
+          conn.client_id
               ? this.drop_client(1000, WSE_REASON.PROTOCOL_ERR)
               : conn.close(1000, WSE_REASON.PROTOCOL_ERR)
           return
@@ -158,9 +157,9 @@ class WseServer {
 
       conn.on('close', (code, reason) => {
         this.disconnected.emit(conn, code, reason)
-        this.log(conn.id, 'disconnected', code, reason)
-        if (conn.id && conn.valid_stat === CLIENT_VALID && this.clients.has(conn.id)) {
-          const client = this.clients.get(conn.id)
+        this.log(conn.client_id, 'disconnected', code, reason)
+        if (conn.client_id && conn.valid_stat === CLIENT_VALID && this.clients.has(conn.client_id)) {
+          const client = this.clients.get(conn.client_id)
 
           this.log(client.id, 'left', code, reason)
 
@@ -204,18 +203,11 @@ class WseClient {
    * @param {object} meta - object with user-defined data
    */
   constructor (server, conn, meta = {}) {
-    this.id = conn.id
+    // todo: check if client id assigned?
+    this.id = conn.client_id
     this.conn = conn
     this.server = server
     this.meta = meta
-  }
-
-  add_conn (conn) {
-    // add connection to anm existing client instance
-  }
-
-  drop_conn (conn) {
-    // drop connection
   }
 
   /**
