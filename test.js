@@ -15,21 +15,6 @@ import { runner } from 'test-a-bit'
     { script: './tests/swarm-disconnect.js' },
     { script: './tests/count-10.js' },
     { script: './tests/count-1001.js' },
-  ])
-
-  await runner([
-    { script: './tests-m/connect.js' },
-    { script: './tests-m/client-concurrency.js' },
-    { script: './tests-m/disconnect.js' },
-    { script: './tests-m/invalid-auth.js' },
-    { script: './tests-m/client2server.js' },
-    { script: './tests-m/server2client.js' },
-    { script: './tests-m/invalid-hi-err.js' },
-    { script: './tests-m/invalid-hi-drop.js' },
-    { script: './tests-m/meta.js' },
-    { script: './tests-m/swarm-connect.js' },
-    { script: './tests-m/swarm-disconnect.js' },
-    { script: './tests-m/count-10.js' },
-    { script: './tests-m/count-1001.js' },
+    { script: './tests/x-client-concurrency.js' },
   ])
 })()

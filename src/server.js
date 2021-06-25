@@ -228,7 +228,6 @@ class WseClient {
     }
   }
 
-  // todo: this hould drop exact connection, not all of them.
   drop (reason = WSE_REASON.NO_REASON) {
     this.server.drop_client(this.id, reason)
   }

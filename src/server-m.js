@@ -35,7 +35,7 @@ class WseMServer {
     protocol = WseJSON,
     incoming,
     ws_server = WebSocket.Server,
-    cpu_limit = 1,
+    cpu_limit = 2,
     ...ws_params
   }) {
     if (!incoming) throw new Error('incoming handler is missing!')
@@ -74,7 +74,7 @@ class WseMServer {
     conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress
     if (conn.remote_addr.substr(0, 7) === '::ffff:') conn.remote_addr = conn.remote_addr.substr(7)
 
-    // CAN BE OVERRIDDEN BY META
+    // todo: should be able to override by meta
     conn.pub_host = conn.remote_addr
   }
 
@@ -107,7 +107,7 @@ class WseMServer {
       let client = this.clients.get(conn.client_id)
 
       if (client) {
-        client.add_conn(conn)
+        client._conn_add(conn)
         // todo: remove older connections if necessary
         client.send(this.protocol.welcome, welcome_payload)
         this.connected.emit(conn, client, msg.dat.meta || {}, true)
@@ -142,7 +142,7 @@ class WseMServer {
         } catch (err) {
           this.error.emit(err, (`${ conn.client_id }#${ conn.id }` || 'stranger') + ' sent broken message')
           if (conn.client_id && this.clients.has(conn.client_id)) {
-            this.clients.get(conn.client_id).drop_conn(conn.id, WSE_REASON.PROTOCOL_ERR)
+            this.clients.get(conn.client_id)._conn_drop(conn.id, WSE_REASON.PROTOCOL_ERR)
           } else {
             conn.removeAllListeners()
             conn.close(1000, WSE_REASON.PROTOCOL_ERR)
@@ -162,7 +162,7 @@ class WseMServer {
         if (conn.client_id && this.clients.has(conn.client_id)) {
           this.log(`${ conn.client_id }#${ conn.id }`, 'disconnected', code, reason)
           const client = this.clients.get(conn.client_id)
-          client.drop_conn(conn.id)
+          client._conn_drop(conn.id)
         } else {
           this.log(`stranger disconnected`, code, reason)
           this.disconnected.emit(conn, code, reason)
@@ -204,23 +204,22 @@ class WseClient {
     this.server = server
     this.meta = meta
 
-    this.add_conn(conn)
+    this._conn_add(conn)
   }
 
-  add_conn (conn) {
-    // todo: any checks?
+  _conn_add (conn) {
     this.conns.push(conn)
     if (this.server.cpu_limit < this.conns.length) {
-      this.drop_conn(this.conns[0].id, WSE_REASON.OTHER_CLIENT_CONNECTED)
+      this._conn_drop(this.conns[0].id, WSE_REASON.OTHER_CLIENT_CONNECTED)
     }
   }
 
-  get_conn (id) {
+  _conn_get (id) {
     return this.conns.find(c => c.id === id)
   }
 
-  drop_conn (id, reason = WSE_REASON.NO_REASON) {
-    const conn = this.get_conn(id)
+  _conn_drop (id, reason = WSE_REASON.NO_REASON) {
+    const conn = this._conn_get(id)
 
     if (!conn) throw new Error('No such connection on this client')
 
@@ -267,7 +266,7 @@ class WseClient {
   }
 
   drop (reason = WSE_REASON.NO_REASON) {
-    this.conns.forEach(conn => this.drop_conn(conn.id, reason))
+    this.conns.forEach(conn => this._conn_drop(conn.id, reason))
   }
 }
 
