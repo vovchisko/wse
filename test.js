@@ -15,6 +15,7 @@ import { runner } from 'test-a-bit'
     { script: './tests/swarm-disconnect.js' },
     { script: './tests/count-10.js' },
     { script: './tests/count-1001.js' },
-    { script: './tests/x-client-concurrency.js' },
+    { script: './tests/x-cpu-limit.js' },
+    { script: './tests/x-cpu-messages.js' },
   ])
 })()

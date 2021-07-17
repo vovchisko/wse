@@ -6,6 +6,8 @@ Websocket wrapper with a several handy features.
 - Messaging protocol `message:{data}`;
 - Simple authorization handler;
 
+TODO: Add `wse-cc` features.
+
 ## Installation
 
 ```bash
@@ -78,3 +80,5 @@ await client.connect(VALID_SECRET, { client_meta: 1 })
 ```
 
 For more examples see: https://github.com/vovchisko/wse/tree/master/tests
+
+

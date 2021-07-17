@@ -193,6 +193,11 @@ class WseServer {
     client.conn.removeAllListeners()
     client.conn.close(1000, reason)
   }
+
+  send_to (client_id, c, dat) {
+    const client = this.clients.get(client_id)
+    if (client) client.send(c, dat)
+  }
 }
 
 

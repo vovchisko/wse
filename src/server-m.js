@@ -189,6 +189,11 @@ class WseMServer {
 
     this.clients.delete(client.id)
   }
+
+  send_to (client_id, c, dat, conn_id) {
+    const client = this.clients.get(client_id)
+    if (client) client.send(c, dat, conn_id)
+  }
 }
 
 
@@ -245,16 +250,16 @@ class WseClient {
    * Send a message to the client
    * @param {string} c - message id
    * @param {string|number|object} dat - payload
-   * @param {string} connection_id id of specific connection to send. omit to send on al the connections of this client
+   * @param {string} connection_index id of specific connection to send. omit to send on al the connections of this client
    * @returns {boolean} - true if connection was opened, false - if not.
    */
-  send (c, dat, connection_id = '') {
-    if (connection_id) {
-      const conn = this.conns.get(connection_id)
+  send (c, dat, connection_index = '') {
+    if (connection_index) {
+      // todo: connection index might change.
+      const conn = this.conns.get(connection_index)
       if (conn.readyState === WebSocket.OPEN) {
         conn.send(this.server.protocol.pack(c, dat))
       }
-
     } else {
       this.server.log(`send to ${ this.id }`, c, dat)
       this.conns.forEach(conn => {
