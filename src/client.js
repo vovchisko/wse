@@ -17,7 +17,7 @@ class WseClient {
     this.error = new Sig()
     this.closed = new Sig()
     this.logger = null
-    this.solve_challenge = null
+    this.challenge_solver = null
 
     this._ws = null
   }
@@ -36,8 +36,8 @@ class WseClient {
 
         if (m.c === this.protocol.challenge) {
           this.log('I challenged with', m)
-          if (typeof this.solve_challenge === 'function') {
-            this.solve_challenge(m.dat, (solution) => {
+          if (typeof this.challenge_solver === 'function') {
+            this.challenge_solver(m.dat, (solution) => {
               this.log('solved', solution)
               this.send(this.protocol.challenge, solution)
             })
@@ -56,6 +56,14 @@ class WseClient {
         this.closed.emit(event.code, event.reason)
       }
     })
+  }
+
+  challenge(challenge_solver) {
+    if (typeof challenge_solver === 'function') {
+      this.challenge_solver = challenge_solver
+    } else {
+      throw new Error('challenge_solver argument is not a function!')
+    }
   }
 
   _process_msg (message) {

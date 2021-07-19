@@ -29,9 +29,9 @@ execute('cra-challenge connect and ready', async (success, fail) => {
 
   server.init()
 
-  client.solve_challenge = (challenge, solve) => {
+  client.challenge((challenge, solve) => {
     solve(challenge.a + challenge.b)
-  }
+  })
 
   client.ready.on(welcome_data => {
     success('welcome message received')

@@ -37,9 +37,9 @@ execute('x-cpu with cra', async (success, fail) => {
 
   server.init()
 
-  client1.solve_challenge = (challenge, solve) => solve(challenge.a + challenge.b)
+  client1.challenge((quest, solve) => solve(quest.a + quest.b))
 
-  client2.solve_challenge = (challenge, solve) => solve('clearly-wrong-value')
+  client2.challenge((quest, solve) => solve('clearly-wrong-value'))
 
   await client1.connect(VALID_SECRET, { user_id: 1 })
       .then((r) => {
