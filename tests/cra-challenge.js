@@ -6,11 +6,7 @@ import { WseClient, WseServer }       from '../node.js'
 function incoming ({ payload, resolve, meta, challenge }) {
   if (payload === VALID_SECRET) {
     const user_id = meta.user_id || 'USR-1'
-
-    if (challenge) {
-      console.log(challenge)
-    }
-
+    if (challenge.response !== 3) fail('failed challenge')
     resolve(user_id, { hey: 'some additional data for the client' })
 
   } else {
@@ -18,7 +14,7 @@ function incoming ({ payload, resolve, meta, challenge }) {
   }
 }
 
-execute('connect and ready', async (success, fail) => {
+execute('cra-challenge connect and ready', async (success, fail) => {
   const options = {}
 
   const server = new WseServer({ port: WS_TEST_PORT, incoming, ...options })
@@ -27,26 +23,21 @@ execute('connect and ready', async (success, fail) => {
   if (!process.send) client.logger = (args) => console.log('CLIENT::', ...args)
   if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)
 
-  server.use_challenge((payload, meta, challenge)=>{
-    server.log('challenge generated!', payload)
+  server.use_challenge((payload, meta, challenge) => {
     challenge({ a: 1, b: 2 })
   })
 
   server.init()
 
   client.solve_challenge = (challenge, solve) => {
-    client.log('solve_challenge', challenge)
-    solve({ result: challenge.a + challenge.b })
+    solve(challenge.a + challenge.b)
   }
 
   client.ready.on(welcome_data => {
-    server.log('very welcomed', welcome_data)
     success('welcome message received')
   })
 
-  console.log('connecting...')
   await client.connect(VALID_SECRET, { user_id: 1 })
-  console.log('CONNECTED!')
 })
 
 

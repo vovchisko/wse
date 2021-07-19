@@ -6,7 +6,6 @@ import { WseClient, WseServer }       from '../node.js'
 function incoming ({ payload, resolve, meta, challenge }) {
   if (payload === VALID_SECRET) {
     const user_id = meta.user_id || 'USR-1'
-    console.log(challenge)
     if (challenge.response !== 3) return resolve(false)
 
     resolve(user_id, { hey: 'some additional data for the client' })
@@ -16,13 +15,11 @@ function incoming ({ payload, resolve, meta, challenge }) {
   }
 }
 
-execute('x-cpu with CRA', async (success, fail) => {
-
+execute('x-cpu with cra', async (success, fail) => {
   const goals = {
     c2disconnect: false,
     c1connect: true,
   }
-
 
   const checkGoals = () => {
     if (goals.c2disconnect && goals.c1connect) success('all correct')
