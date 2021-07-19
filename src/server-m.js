@@ -5,9 +5,18 @@ import Sig       from 'a-signal'
 import WseJSON    from './protocol.js'
 import WSE_REASON from './reason.js'
 
-const CLIENT_STRANGER = 0
-const CLIENT_VALIDATING = 1
-const CLIENT_VALID = 2
+const CLIENT_STRANGER = 'CLIENT_STRANGER'
+const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
+const CLIENT_CHALLENGED = 'CLIENT_CHALLENGED'
+const CLIENT_VALID = 'CLIENT_VALID'
+
+const _payload = Symbol('_payload')
+const _meta = Symbol('_meta')
+const _challenge_quest = Symbol('_challenge_quest')
+const _challenge_response = Symbol('_challenge_response')
+const _client_id = Symbol('_client_id')
+const _valid_stat = Symbol('_valid_stat')
+const _id = Symbol('id')
 
 function conn_id_gen () {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
@@ -17,10 +26,13 @@ class WseMServer {
   /**
    * Manage incoming connections.
    *
-   * @callback WseMServer.incoming_handler
+   * @callback WseServer.incoming_handler
    * @param {String} params.payload JWT or any other type of secret
    * @param {Object} params.meta optional data from the client
    * @param {Function} params.resolve call it with user ID or any other identifier. falsy argument will reject connection.
+   * @param {Object} params.challenge challenge quest and client response on it
+   * @param {*} params.challenge.quest given task
+   * @param {*} params.challenge.response received user response
    */
 
   /**
@@ -52,10 +64,18 @@ class WseMServer {
     this.connected = new Sig()
     this.disconnected = new Sig()
     this.error = new Sig()
-
+    this.challenger = null
     this.channel = new EE()
 
     this.logger = null
+  }
+
+  use_challenge (challenger) {
+    if (typeof challenger === 'function') {
+      this.challenger = challenger
+    } else {
+      throw new Error('challenger argument is not a function!')
+    }
   }
 
   handle_connection (conn, req) {
@@ -65,10 +85,10 @@ class WseMServer {
 
     this.log('handle_connection', conn.protocol)
 
-    conn.client_id = null
-    conn.id = ''
-    conn.valid_stat = CLIENT_STRANGER
-    conn.meta = {}
+    conn[_client_id] = null
+    conn[_valid_stat] = CLIENT_STRANGER
+    conn[_meta] = {}
+    conn[_id] = '' // todo: uuid?
 
     // RESOLVING IPV4 REMOTE ADDR
     conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress
@@ -79,52 +99,84 @@ class WseMServer {
   }
 
   handle_valid_message (conn, msg) {
-    this.log(conn.client_id, 'handle_valid_message', msg)
-    const client = this.clients.get(conn.client_id)
-    this.channel.emit(msg.c, client, msg.dat, conn.id)
+    this.log(conn[_client_id], 'handle_valid_message', msg)
+    const client = this.clients.get(conn[_client_id])
+    this.channel.emit(msg.c, client, msg.dat, conn[_id])
   }
 
   handle_stranger_message (conn, msg) {
     this.log('handle_stranger_message', msg)
 
-    conn.valid_stat = CLIENT_VALIDATING
+    if (conn[_valid_stat] === CLIENT_STRANGER) {
+      if (msg.c === this.protocol.hi) {
+        conn[_valid_stat] = CLIENT_VALIDATING
+        conn[_payload] = msg.dat.payload
 
-    if (msg.c !== this.protocol.hi) throw new Error('only-hi-message-allowed') // todo: kick
+        Object.assign(conn[_meta], msg.dat.meta || {})
 
-    // todo: why it's here? make a method out of if
-    const resolve = (id, welcome_payload) => {
-      this.log(id, 'resolved', msg.dat.payload, id, welcome_payload)
-
-      if (!id) {
-        conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
-        return
-      }
-
-      conn.client_id = id
-      conn.id = conn_id_gen()
-      conn.valid_stat = CLIENT_VALID
-
-      let client = this.clients.get(conn.client_id)
-
-      if (client) {
-        client._conn_add(conn)
-        // todo: remove older connections if necessary
-        client.send(this.protocol.welcome, welcome_payload)
-        this.connected.emit(conn, client, msg.dat.meta || {}, true)
+        if (typeof this.challenger === 'function') {
+          this.challenger(conn[_payload], conn[_meta], (quest) => {
+            conn[_challenge_quest] = quest
+            conn.send(this.protocol.pack('challenge', quest))
+            conn[_valid_stat] = CLIENT_CHALLENGED
+          })
+          return
+        }
       } else {
-        const client = new WseClient(this, conn, msg.dat.meta || {})
-        this.clients.set(client.id, client)
-        client.send(this.protocol.welcome, welcome_payload)
-        this.connected.emit(conn, client, msg.dat.meta || {}, true)
-        this.joined.emit(client, msg.dat.meta || {}, true)
+        conn.close(1000, WSE_REASON.PROTOCOL_ERR)
+        return
       }
     }
 
+    if (conn[_valid_stat] === CLIENT_CHALLENGED) {
+      if (msg.c === this.protocol.challenge) {
+        conn[_challenge_response] = msg.dat
+        this.log('challenge response', msg.dat)
+      } else {
+        conn.close(1000, WSE_REASON.PROTOCOL_ERR)
+      }
+    }
+
+    const resolve = (client_id, welcome_payload) => {
+      this.resolve_connection(conn, client_id, welcome_payload, msg)
+    }
+
     this.incoming_handler({
-      payload: msg.dat.payload,
-      meta: msg.dat.meta || {},
+      payload: conn[_payload],
+      meta: conn[_meta],
       resolve,
+      challenge: typeof this.challenger === 'function'
+          ? { quest: conn[_challenge_quest], response: conn[_challenge_response] }
+          : null,
+      id: conn[_id],
     })
+  }
+
+  resolve_connection (conn, client_id, welcome_payload, msg) {
+    if (!client_id) {
+      conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
+      return
+    }
+
+    this.log(client_id, 'resolved', msg.dat.payload, welcome_payload)
+
+    conn[_client_id] = client_id
+    conn[_id] = conn_id_gen()
+    conn[_valid_stat] = CLIENT_VALID
+
+    let client = this.clients.get(conn[_client_id])
+
+    if (client) {
+      client._conn_add(conn)
+      client.send(this.protocol.welcome, welcome_payload, conn[_id])
+      this.connected.emit(conn)
+    } else {
+      const client = new WseClient(this, conn)
+      this.clients.set(client.id, client)
+      client.send(this.protocol.welcome, welcome_payload)
+      this.connected.emit(conn)
+      this.joined.emit(client)
+    }
   }
 
   init () {
@@ -133,16 +185,15 @@ class WseMServer {
       this.handle_connection(conn, req)
 
       conn.on('message', (message) => {
-        // todo: ignore or kick?
-        if (conn.valid_stat === CLIENT_VALIDATING) return
+        if (conn[_valid_stat] === CLIENT_VALIDATING) return
 
         let msg = ''
         try {
           msg = this.protocol.unpack(message)
         } catch (err) {
-          this.error.emit(err, (`${ conn.client_id }#${ conn.id }` || 'stranger') + ' sent broken message')
-          if (conn.client_id && this.clients.has(conn.client_id)) {
-            this.clients.get(conn.client_id)._conn_drop(conn.id, WSE_REASON.PROTOCOL_ERR)
+          this.error.emit(err, (`${ conn[_client_id] }#${ conn[_id] }` || 'stranger') + ' sent broken message')
+          if (conn[_client_id] && this.clients.has(conn[_client_id])) {
+            this.clients.get(conn[_client_id])._conn_drop(conn[_id], WSE_REASON.PROTOCOL_ERR)
           } else {
             conn.removeAllListeners()
             conn.close(1000, WSE_REASON.PROTOCOL_ERR)
@@ -150,19 +201,20 @@ class WseMServer {
           return
         }
 
-        switch (conn.valid_stat) {
+        switch (conn[_valid_stat]) {
           case CLIENT_VALID:
             return this.handle_valid_message(conn, msg)
           case CLIENT_STRANGER:
+          case CLIENT_CHALLENGED:
             return this.handle_stranger_message(conn, msg)
         }
       })
 
       conn.on('close', (code, reason) => {
-        if (conn.client_id && this.clients.has(conn.client_id)) {
-          this.log(`${ conn.client_id }#${ conn.id }`, 'disconnected', code, reason)
-          const client = this.clients.get(conn.client_id)
-          client._conn_drop(conn.id)
+        if (conn[_client_id] && this.clients.has(conn[_client_id])) {
+          this.log(`${ conn[_client_id] }#${ conn[_id] }`, 'disconnected', code, reason)
+          const client = this.clients.get(conn[_client_id])
+          client._conn_drop(conn[_id])
         } else {
           this.log(`stranger disconnected`, code, reason)
           this.disconnected.emit(conn, code, reason)
@@ -204,27 +256,26 @@ class WseClient {
    * @param {object} meta - object with user-defined data
    */
   constructor (server, conn, meta = {}) {
-    this.id = conn.client_id
-    this.conns = []
+    this.id = conn[_client_id]
+    this.conns = new Map()
     this.server = server
-    this.meta = meta
+    this.meta = conn[_meta]
+    this.payload = conn[_payload]
 
     this._conn_add(conn)
   }
 
   _conn_add (conn) {
-    this.conns.push(conn)
-    if (this.server.cpu_limit < this.conns.length) {
-      this._conn_drop(this.conns[0].id, WSE_REASON.OTHER_CLIENT_CONNECTED)
+    this.conns.set(conn[_id], conn)
+    if (this.server.cpu_limit < this.conns.size) {
+      const key_to_delete = this.conns[Symbol.iterator]().next().value[0]
+      this._conn_drop(key_to_delete, WSE_REASON.OTHER_CLIENT_CONNECTED)
     }
-  }
-
-  _conn_get (id) {
-    return this.conns.find(c => c.id === id)
+    return this
   }
 
   _conn_drop (id, reason = WSE_REASON.NO_REASON) {
-    const conn = this._conn_get(id)
+    const conn = this.conns.get(id)
 
     if (!conn) throw new Error('No such connection on this client')
 
@@ -234,12 +285,11 @@ class WseClient {
       conn.close(1000, reason)
     }
 
-    const index = this.conns.indexOf(conn)
-    if (index > -1) this.conns.splice(index, 1)
+    this.conns.delete(id)
 
     this.server.disconnected.emit(conn, 1000, reason)
 
-    if (this.conns.length === 0) {
+    if (this.conns.size === 0) {
       this.server.drop_client(this.id, reason)
     }
 
@@ -250,13 +300,12 @@ class WseClient {
    * Send a message to the client
    * @param {string} c - message id
    * @param {string|number|object} dat - payload
-   * @param {string} connection_index id of specific connection to send. omit to send on al the connections of this client
+   * @param {string} conn_id id of specific connection to send. omit to send on al the connections of this client
    * @returns {boolean} - true if connection was opened, false - if not.
    */
-  send (c, dat, connection_index = '') {
-    if (connection_index) {
-      // todo: connection index might change.
-      const conn = this.conns.get(connection_index)
+  send (c, dat, conn_id = '') {
+    if (conn_id) {
+      const conn = this.conns.get(conn_id)
       if (conn.readyState === WebSocket.OPEN) {
         conn.send(this.server.protocol.pack(c, dat))
       }
@@ -271,7 +320,7 @@ class WseClient {
   }
 
   drop (reason = WSE_REASON.NO_REASON) {
-    this.conns.forEach(conn => this._conn_drop(conn.id, reason))
+    this.conns.keys().forEach(key => this._conn_drop(key, reason))
   }
 }
 

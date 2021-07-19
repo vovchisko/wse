@@ -17,6 +17,7 @@ class WseClient {
     this.error = new Sig()
     this.closed = new Sig()
     this.logger = null
+    this.solve_challenge = null
 
     this._ws = null
   }
@@ -32,6 +33,17 @@ class WseClient {
       }
       this._ws.onmessage = (message) => {
         let m = this.protocol.unpack(message.data)
+
+        if (m.c === this.protocol.challenge) {
+          this.log('I challenged with', m)
+          if (typeof this.solve_challenge === 'function') {
+            this.solve_challenge(m.dat, (solution) => {
+              this.log('solved', solution)
+              this.send(this.protocol.challenge, solution)
+            })
+            return
+          }
+        }
         if (m.c === this.protocol.welcome) {
           this.ready.emit(m.dat)
           resolve(m.dat)
@@ -40,7 +52,7 @@ class WseClient {
       }
       this._ws.onerror = (e) => this.error.emit(e)
       this._ws.onclose = (event) => {
-        reject(event.reason) //todo: ? if I resolved before, don't reject
+        reject(event.reason)
         this.closed.emit(event.code, event.reason)
       }
     })
@@ -55,18 +67,18 @@ class WseClient {
   send (c, dat) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack(c, dat))
-      this._log('send', c, dat)
+      this.log('send', c, dat)
     } else {
       this.error.emit('error', new Error('socket-not-opened'))
     }
   }
 
   close (code = 1000, reason = 'BY_CLIENT') {
-    this._log('closed', code, reason)
+    this.log('closed', code, reason)
     if (this._ws) this._ws.close(code, reason)
   }
 
-  _log () {
+  log () {
     if (this.logger) this.logger(arguments)
   };
 }

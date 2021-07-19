@@ -2,7 +2,7 @@ import { execute } from 'test-a-bit'
 
 import { create_client, create_mserver, VALID_SECRET } from './_helpers.js'
 
-execute('cpu_limit = 2', async (success, fail) => {
+execute('x-cpu - 3 on 2', async (success, fail) => {
   const server = create_mserver({ cpu_limit: 3 })
 
   const clientA = create_client()
