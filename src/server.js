@@ -5,17 +5,17 @@ import Sig       from 'a-signal'
 import WseJSON    from './protocol.js'
 import WSE_REASON from './reason.js'
 
+const CLIENT_STRANGER = 'CLIENT_STRANGER'
+const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
+const CLIENT_CHALLENGED = 'CLIENT_CHALLENGED'
+const CLIENT_VALID = 'CLIENT_VALID'
+
 const _payload = Symbol('_payload')
 const _meta = Symbol('_meta')
 const _challenge_quest = Symbol('_challenge_quest')
 const _challenge_response = Symbol('_challenge_response')
 const _client_id = Symbol('_client_id')
 const _valid_stat = Symbol('_valid_stat')
-
-const CLIENT_STRANGER = 'CLIENT_STRANGER'
-const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
-const CLIENT_CHALLENGED = 'CLIENT_CHALLENGED'
-const CLIENT_VALID = 'CLIENT_VALID'
 
 class WseServer {
   /**
