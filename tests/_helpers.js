@@ -1,4 +1,4 @@
-import { WseClient, WseMServer, WseServer } from '../node.js'
+import { WseClient, WseServer } from '../node.js'
 
 let USER_ID_COUNTER = 100
 
@@ -20,16 +20,6 @@ export function create_server (options = {}) {
 
   if (!process.send) {
     server.logger = (args) => console.log('SERVER::', ...args)
-  }
-
-  return server
-}
-
-export function create_mserver (options = {}) {
-  const server = new WseMServer({ port: WS_TEST_PORT, incoming, ...options })
-
-  if (!process.send) {
-    server.logger = (args) => console.log('M-SERVER::', ...args)
   }
 
   return server

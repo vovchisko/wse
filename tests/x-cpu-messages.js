@@ -1,9 +1,9 @@
 import { execute } from 'test-a-bit'
 
-import { create_client, create_mserver, VALID_SECRET } from './_helpers.js'
+import { create_client, create_server, VALID_SECRET } from './_helpers.js'
 
 execute('x-cpu messages', async (success, fail) => {
-  const server = create_mserver({ cpu_limit: 3 })
+  const server = create_server({ cpu_limit: 3 })
 
   const clientA = create_client()
   const clientB = create_client()

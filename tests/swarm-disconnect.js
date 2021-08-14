@@ -2,7 +2,7 @@ import { execute } from 'test-a-bit'
 
 import { create_clients_swarm, create_server, VALID_SECRET } from './_helpers.js'
 
-execute('many clients', async (success, fail) => {
+execute('swarm disconnect', async (success, fail) => {
 
   const total_clients = 20
   let points = 0
@@ -12,7 +12,9 @@ execute('many clients', async (success, fail) => {
 
   server.joined.on(c => {
     server.log('joined', c.id)
-    process.nextTick(() => c.drop('BECAUSE-OF-TEST'))
+    process.nextTick(() => {
+      c.drop('BECAUSE-OF-TEST')
+    })
   })
 
   server.init()

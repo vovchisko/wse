@@ -1,10 +1,10 @@
 import { execute } from 'test-a-bit'
 
-import { create_client, create_mserver, VALID_SECRET, wait } from './_helpers.js'
+import { create_client, create_server, VALID_SECRET, wait } from './_helpers.js'
 import { WSE_REASON }                                                       from '../node.js'
 
 execute('cpu_limit = 2', async (success, fail) => {
-  const server = create_mserver({cpu_limit: 2})
+  const server = create_server({cpu_limit: 2})
   const client1 = create_client()
   const client2 = create_client()
   const client3 = create_client()

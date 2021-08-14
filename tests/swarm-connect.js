@@ -2,7 +2,7 @@ import { execute } from 'test-a-bit'
 
 import { create_clients_swarm, create_server, VALID_SECRET } from './_helpers.js'
 
-execute('many clients', async (success, fail) => {
+execute('swarm connect', async (success, fail) => {
 
   const total_clients = 20
   let points = 0
