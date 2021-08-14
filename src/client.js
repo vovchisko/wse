@@ -84,8 +84,8 @@ class WseClient {
   }
 
   close (code = 1000, reason = 'BY_CLIENT') {
-    this.log('closed', code, reason)
-    if (this._ws) this._ws.close(code, reason)
+    this.log('closed', code, String(reason))
+    if (this._ws) this._ws.close(code, String(reason))
   }
 
   log () {

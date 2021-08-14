@@ -11,9 +11,8 @@ execute('invalid message', async (success, fail) => {
   const fake_ws = new WS(`ws://localhost:${ WS_TEST_PORT }`, 'wse-default-json')
 
   fake_ws.on('close', (code, reason) => {
-    if (!process.send) console.log('FAKE_WS::', 'close', code, reason)
-
-    code === 1000 && reason === WSE_REASON.PROTOCOL_ERR
+    if (!process.send) console.log('FAKE_WS::', 'close', code, String(reason))
+    code === 1000 && String(reason) === WSE_REASON.PROTOCOL_ERR
         ? success('client disconnected as expected')
         : fail('invalid code or reason on disconnect')
   })

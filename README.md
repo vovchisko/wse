@@ -1,10 +1,11 @@
-# wse
+# WSE
 
-Websocket wrapper with a several handy features.
+Client-centric WebSocket Protocol Expansion.
 
-- Client management;
-- Messaging protocol `message:{data}`;
+- Easy client management;
+- Messaging protocol;
 - Simple authorization handler;
+- Custom Protocol Handler.
 
 ## Installation
 
@@ -12,9 +13,11 @@ Websocket wrapper with a several handy features.
 npm install wse -s
 ```
 
+
+
 #### Opt-in for performance
 
-There are 2 optional modules that can be installed along side with the ws module. These modules are binary addons which improve
+There are 2 optional modules that can be installed along side with the `ws` module. These modules are binary addons which improve
 certain operations.
 
 ```npm install --save-optional bufferutil```: Allows to efficiently perform operations such as masking and unmasking the data
@@ -29,9 +32,6 @@ Read More: https://www.npmjs.com/package/ws#opt-in-for-performance
 ``WseServer`` - NodeJS Server. Not available in the browser.
 
 ``WseClient`` - Client works everywhere - Browser, NodeJS, or Electron.
-
-``WseServerMulti`` - Same as WseServer, but supports multiple connections with the same user ID. Super handy for cross platform
-applications when user can login multiple devices at the same time.
 
 ``WSE_REASON`` - Constants with reasons of closure connections.
 
