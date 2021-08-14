@@ -10,12 +10,14 @@ class WseClient {
     this.ws_options = ws_options
     this.reused = 0
 
-    this.channel = new EE() // event emitter only for messages
-    this.ignored = new Sig() // fires when no listeners fired for the message
-    this.connected = new Sig() // when connected
-    this.ready = new Sig() // when authorised
+    this.channel = new EE()
+
+    this.ignored = new Sig()
+    this.connected = new Sig()
+    this.ready = new Sig()
     this.error = new Sig()
     this.closed = new Sig()
+
     this.logger = null
     this.challenge_solver = null
 

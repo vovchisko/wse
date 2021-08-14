@@ -59,6 +59,7 @@ class WseMServer {
     this.incoming_handler = incoming
     this.cpu_limit = cpu_limit
 
+    this.ignored = new Sig()
     this.joined = new Sig()
     this.left = new Sig()
     this.connected = new Sig()
@@ -101,7 +102,7 @@ class WseMServer {
   handle_valid_message (conn, msg) {
     this.log(conn[_client_id], 'handle_valid_message', msg)
     const client = this.clients.get(conn[_client_id])
-    this.channel.emit(msg.c, client, msg.dat, conn[_id])
+    this.channel.emit(msg.c, client, msg.dat, conn[_id]) || this.ignored.emit(client, msg.c, msg.dat, conn[_id])
   }
 
   handle_stranger_message (conn, msg) {

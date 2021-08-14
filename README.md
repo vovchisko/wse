@@ -6,8 +6,6 @@ Websocket wrapper with a several handy features.
 - Messaging protocol `message:{data}`;
 - Simple authorization handler;
 
-TODO: Add `wse-cc` features.
-
 ## Installation
 
 ```bash
@@ -39,45 +37,6 @@ applications when user can login multiple devices at the same time.
 
 ## Usage
 
-```
-import { WseClient, WseServer } from 'wse'
-
-const VALID_SECRET = 'it can be JWT or any API-key'
-
-const client = new WseClient({ url: `ws://localhost:3000` })
-const server = new WseServer({ port: WS_TEST_PORT, incoming })
-
-// handler used to validate incoming connections
-export function incoming ({ payload, resolve, meta }) {
-  if (payload === VALID_SECRET) {
-    const user_id = 'USR-01'
-
-    // if user payload is valid - we can accept connection
-    // by calling resolve(id, {welcome_data}) so this cannection now officially valid
-    // only resolved connections can recieve messages
-    // user_id also needs to be unique. if connection with the same ID already
-    // exists, it woll be dropped, and new one will be accepted
-    resolve(user_id, { hey: 'some additional data for the client' })
-  } else {
-    // reject this connection
-    resolve(false)
-  }
-}
-
-// init call is required. it will start listening port.
-server.init()
-
-// ready-signal will fire when connection is accepted.
-// any attempts to send a message before
-// `welcome` message from the server will be ignored.
-client.ready.on(welcome_data => {
-    server.log('very welcomed', welcome_data)
-})
-
-// connect is async
-await client.connect(VALID_SECRET, { client_meta: 1 })
-
-```
 
 For more examples see: https://github.com/vovchisko/wse/tree/master/tests
 

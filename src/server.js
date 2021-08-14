@@ -52,9 +52,10 @@ class WseServer {
     this.ws_server = ws_server
     this.incoming_handler = incoming
 
+    this.connected = new Sig()
+    this.ignored = new Sig()
     this.joined = new Sig()
     this.left = new Sig()
-    this.connected = new Sig()
     this.disconnected = new Sig()
     this.error = new Sig()
     this.challenger = null
@@ -93,7 +94,7 @@ class WseServer {
   handle_valid_message (conn, msg) {
     this.log(conn[_client_id], 'handle_valid_message', msg)
     const client = this.clients.get(conn[_client_id])
-    this.channel.emit(msg.c, client, msg.dat)
+    this.channel.emit(msg.c, client, msg.dat) || this.ignored.emit(client, msg.c, msg.dat)
   }
 
   handle_stranger_message (conn, msg) {
