@@ -25,6 +25,3 @@ execute('only one connection per client', async (success, fail) => {
   await client2.connect(VALID_SECRET, { user_id: 'UID1', client: 2 })
 })
 
-
-
-

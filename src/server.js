@@ -52,7 +52,7 @@ class WseServer {
   }) {
     if (!incoming) throw new Error('incoming handler is missing!')
 
-    this.clients = new Map(/* { ID: WseClientMulti } */)
+    this.clients = new Map(/* { ID: WseClient } */)
     this.protocol = new protocol()
     this.ws_params = ws_params
     this.ws_server = ws_server
@@ -172,7 +172,7 @@ class WseServer {
       client.send(this.protocol.welcome, welcome_payload, conn[_id])
       this.connected.emit(conn)
     } else {
-      const client = new WseClientMulti(this, conn)
+      const client = new WseClient(this, conn)
       this.clients.set(client.id, client)
       client.send(this.protocol.welcome, welcome_payload)
       this.connected.emit(conn)
@@ -230,6 +230,12 @@ class WseServer {
     if (this.logger) this.logger(arguments)
   }
 
+  broadcast (c, dat) {
+    this.clients.forEach((client) => {
+      client.send(c, dat)
+    })
+  }
+
   drop_client (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
 
@@ -250,7 +256,7 @@ class WseServer {
 }
 
 
-class WseClientMulti {
+class WseClient {
   /**
    * @param {WseServer} server - wsm instance
    * @param {WebSocket} conn - ws connection
