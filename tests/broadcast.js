@@ -15,7 +15,7 @@ execute('only one connection per client', async (success, fail) => {
   const result = []
   const check_result = () => {
     if (result.length === 4) {
-      result.forEach(val => { if (val !== '42') fail('broadcast failed') })
+      result.forEach(val => val !== '42' ? fail('broadcast failed') : null)
       success('broadcast is correct')
     }
   }
