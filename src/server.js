@@ -28,9 +28,9 @@ function conn_id_gen () {
 
 export default class WseServer {
   /**
-   * Manage incoming connections.
+   * Manage identify connections.
    *
-   * @callback WseServer.incoming_handler
+   * @callback WseServer.identify
    * @param {String} params.payload JWT or any other type of secret
    * @param {Object} params.meta optional data from the client
    * @param {Function} params.identify call it with user ID or any other identifier. falsy argument will reject connection.
@@ -43,7 +43,7 @@ export default class WseServer {
    * WseServer class.
    *
    * @param {Object} options see https://github.com/websockets/ws/#readme.
-   * @param {Function|WseServer.incoming_handler} options.incoming Will be called for each new connection.
+   * @param {Function|WseServer.identify} options.identify Will be called for each new connection.
    * @param {Number} options.cpu_limit How many connections allowed per user
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    *
@@ -64,18 +64,18 @@ export default class WseServer {
    */
   constructor ({
     protocol = WseJSON,
-    incoming,
+    identify,
     cpu_limit = 1,
     init = true,
     ...options
   }) {
-    if (!incoming) throw new Error('incoming handler is missing!')
+    if (!identify) throw new Error('identify handler is missing!')
 
     this.clients = new Map(/* { ID: WseClient } */)
     this.protocol = new protocol()
     this.options = options
     this.server = null
-    this.incoming_handler = incoming
+    this.identify = identify
     this.cpu_limit = cpu_limit
 
     this.ignored = new Sig()
@@ -91,6 +91,7 @@ export default class WseServer {
 
     if (init) this.init()
   }
+
 
   use_challenge (challenger) {
     if (typeof challenger === 'function') {
@@ -163,7 +164,7 @@ export default class WseServer {
       this.identify_connection(conn, client_id, welcome_payload, msg)
     }
 
-    this.incoming_handler({
+    this.identify({
       payload: conn[_payload],
       meta: conn[_meta],
       identify,

@@ -21,10 +21,10 @@ npm install wse -s
 
 import { WseServer } from 'wse'
 
-const server = new WseServer({ port: 8080, incoming })
+const server = new WseServer({ port: 8080, identify })
 
 // auth handler
-function incoming ({ payload, identify, meta }) {
+function identify ({ payload, identify, meta }) {
   if (payload === VALID_SECRET) {
     const user_id = 'any user id here'
     identify(user_id, { hey: 'welcome back!' })

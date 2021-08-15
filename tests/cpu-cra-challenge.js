@@ -3,7 +3,7 @@ import { execute } from 'test-a-bit'
 import { VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
 import { WseClient, WseServer }       from '../node.js'
 
-function incoming ({ payload, identify, meta, challenge }) {
+function identify ({ payload, identify, meta, challenge }) {
   if (payload === VALID_SECRET) {
     const user_id = meta.user_id || 'USR-1'
     if (challenge.response !== 3) return resolve(false)
@@ -25,7 +25,7 @@ execute('x-cpu with cra', async (success, fail) => {
     if (goals.c2disconnect && goals.c1connect) success('all correct')
   }
 
-  const server = new WseServer({ port: WS_TEST_PORT, incoming })
+  const server = new WseServer({ port: WS_TEST_PORT, identify })
   const client1 = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
   const client2 = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
 

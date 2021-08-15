@@ -1,14 +1,14 @@
 import { execute } from 'test-a-bit'
 
 import http                                     from 'http'
-import { incoming, VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
+import { identify, VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
 import { WseClient, WseServer }                 from '../node.js'
 
 execute('external httpServer', async (success, fail) => {
 
   const externalServer = new http.Server()
 
-  const server = new WseServer({ incoming, server: externalServer })
+  const server = new WseServer({ identify, server: externalServer })
   const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
 
   if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)

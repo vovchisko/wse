@@ -19,9 +19,9 @@ import { runner } from 'test-a-bit'
     { script: './tests/server2client-ignored.js' },
     { script: './tests/swarm-connect.js' },
     { script: './tests/swarm-disconnect.js' },
-    { script: './tests/x-cpu-cra-challenge.js' },
-    { script: './tests/x-cpu-limit.js' },
-    { script: './tests/x-cpu-messages.js' },
+    { script: './tests/cpu-cra-challenge.js' },
+    { script: './tests/cpu-limit.js' },
+    { script: './tests/cpu-messages.js' },
     { script: './tests/broadcast.js' },
     { script: './tests/external-server.js' },
   ])
