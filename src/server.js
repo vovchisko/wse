@@ -19,17 +19,21 @@ const _valid_stat = Symbol('_valid_stat')
 const _id = Symbol('id')
 
 function conn_id_gen () {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+  return Math.random()
+             .toString(36)
+             .substring(2, 15) + Math.random()
+             .toString(36)
+             .substring(2, 15)
 }
 
-class WseServer {
+export default class WseServer {
   /**
    * Manage incoming connections.
    *
    * @callback WseServer.incoming_handler
    * @param {String} params.payload JWT or any other type of secret
    * @param {Object} params.meta optional data from the client
-   * @param {Function} params.resolve call it with user ID or any other identifier. falsy argument will reject connection.
+   * @param {Function} params.identify call it with user ID or any other identifier. falsy argument will reject connection.
    * @param {Object} params.challenge challenge quest and client response on it
    * @param {*} params.challenge.quest given task
    * @param {*} params.challenge.response received user response
@@ -42,6 +46,14 @@ class WseServer {
    * @param {Function|WseServer.incoming_handler} options.incoming Will be called for each new connection.
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    * @param {WebSocket.Server} [options.ws_server=WebSocket.Server] Tt is possible to override `ws` implementation. Use with caution.
+   */
+  /**
+   *
+   * @param protocol
+   * @param incoming
+   * @param ws_server
+   * @param cpu_limit
+   * @param ws_params
    */
   constructor ({
     protocol = WseJSON,
@@ -138,14 +150,14 @@ class WseServer {
       }
     }
 
-    const resolve = (client_id, welcome_payload) => {
-      this.resolve_connection(conn, client_id, welcome_payload, msg)
+    const identify = (client_id, welcome_payload) => {
+      this.identify_connection(conn, client_id, welcome_payload, msg)
     }
 
     this.incoming_handler({
       payload: conn[_payload],
       meta: conn[_meta],
-      resolve,
+      identify,
       challenge: typeof this.challenger === 'function'
           ? { quest: conn[_challenge_quest], response: conn[_challenge_response] }
           : null,
@@ -153,7 +165,7 @@ class WseServer {
     })
   }
 
-  resolve_connection (conn, client_id, welcome_payload, msg) {
+  identify_connection (conn, client_id, welcome_payload, msg) {
     if (!client_id) {
       conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
       return
@@ -331,4 +343,4 @@ class WseClient {
   }
 }
 
-export default WseServer
+

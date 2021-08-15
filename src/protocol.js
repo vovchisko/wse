@@ -1,4 +1,4 @@
-class WseJSON {
+export default class WseJSON {
   constructor () {
     this.name = 'wse-default-json'
     this.hi = 'hi'
@@ -18,4 +18,3 @@ class WseJSON {
   }
 }
 
-export default WseJSON

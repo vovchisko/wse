@@ -6,12 +6,12 @@ export const VALID_SECRET = 'valid-secret'
 export const INVALID_SECRET = 'invalid-secret'
 export const WS_TEST_PORT = 64000
 
-export function incoming ({ payload, resolve, meta }) {
+export function incoming ({ payload, identify, meta }) {
   if (payload === VALID_SECRET) {
     const user_id = meta.user_id || 'USR-' + USER_ID_COUNTER++
-    resolve(user_id, { hey: 'some additional data for the client' })
+    identify(user_id, { hey: 'some additional data for the client' })
   } else {
-    resolve(false)
+    identify(false)
   }
 }
 
@@ -51,7 +51,5 @@ export function create_clients_swarm (count = 2, options = {}) {
 }
 
 export function wait (delay) {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, delay)
-  })
+  return new Promise(resolve => setTimeout(resolve, delay))
 }

@@ -3,7 +3,7 @@ import EE      from 'eventemitter3'
 import Sig     from 'a-signal'
 import WS      from 'isomorphic-ws'
 
-class WseClient {
+export default class WseClient {
   constructor ({ url, protocol = WseJSON, ...ws_options }) {
     this.protocol = new protocol()
     this.url = url
@@ -60,7 +60,7 @@ class WseClient {
     })
   }
 
-  challenge(challenge_solver) {
+  challenge (challenge_solver) {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
     } else {
@@ -92,5 +92,3 @@ class WseClient {
     if (this.logger) this.logger(arguments)
   };
 }
-
-export default WseClient

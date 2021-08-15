@@ -5,7 +5,8 @@ Client-centric WebSocket Protocol Expansion.
 - Easy client management;
 - Messaging protocol;
 - Simple authorization handler;
-- Custom Protocol Handler.
+- Custom Messaging Protocol Processor for real racers.
+- Basic Challenge-response Auth handlers.
 
 ## Installation
 
@@ -13,12 +14,63 @@ Client-centric WebSocket Protocol Expansion.
 npm install wse -s
 ```
 
+## Basic Usage
+
+```JavaScript
+// server
+
+import { WseServer } from 'wse'
+
+const server = new WseServer({ port: 8080, incoming })
+
+// auth handler
+function incoming ({ payload, identify, meta }) {
+  if (payload === VALID_SECRET) {
+    const user_id = 'any user id here'
+    identify(user_id, { hey: 'welcome back!' })
+  } else {
+    identify(false)
+  }
+}
+
+server.init()
+server.broadcast('broad-message', { paylog: 'hey there!' })
+
+server.channel.on('test-message', (client, dat) => {
+  console.log('we got test-message from', client.id)
+  console.log(dat)
+})
+
+```
+
+```JavaScript
+// client
+import { WseClient } from 'wse'
+
+const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
+
+await client.connect(VALID_SECRET)
+
+client.ready.on(() => {
+  client.send('test-message', { a: 1, b: 2 })
+})
+```
+
+> API Docs is in progress now.
+> For more examples see: https://github.com/vovchisko/wse/tree/master/tests
 
 
-#### Opt-in for performance
+## Coming features:
 
-There are 2 optional modules that can be installed along side with the `ws` module. These modules are binary addons which improve
-certain operations.
+- [ ] API Docs with examples.
+- [ ] Promisified Request/Response messaging.
+- [ ] Subscribe/Publish topics.
+
+
+### Opt-in for performance
+
+There are 2 optional modules that can be installed along side with the `ws` module. These modules are binary addons which
+improve certain operations.
 
 ```npm install --save-optional bufferutil```: Allows to efficiently perform operations such as masking and unmasking the data
 payload of the WebSocket frames.
@@ -27,17 +79,5 @@ payload of the WebSocket frames.
 
 Read More: https://www.npmjs.com/package/ws#opt-in-for-performance
 
-## Inside
-
-``WseServer`` - NodeJS Server. Not available in the browser.
-
-``WseClient`` - Client works everywhere - Browser, NodeJS, or Electron.
-
-``WSE_REASON`` - Constants with reasons of closure connections.
-
-## Usage
-
-
-For more examples see: https://github.com/vovchisko/wse/tree/master/tests
 
 
