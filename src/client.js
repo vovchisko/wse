@@ -18,6 +18,14 @@ export default class WseClient {
     this.error = new Sig()
     this.closed = new Sig()
 
+    this.when = {
+      ignored: this.ignored.subscriber(),
+      connected: this.connected.subscriber(),
+      ready: this.ready.subscriber(),
+      error: this.error.subscriber(),
+      closed: this.closed.subscriber(),
+    }
+
     this.logger = null
     this.challenge_solver = null
 

@@ -71,12 +71,14 @@ export default class WseServer {
   }) {
     if (!identify) throw new Error('identify handler is missing!')
 
-    this.clients = new Map(/* { ID: WseClient } */)
+    this.clients = new Map()
     this.protocol = new protocol()
     this.options = options
     this.server = null
     this.identify = identify
     this.cpu_limit = cpu_limit
+
+    this.channel = new EE()
 
     this.ignored = new Sig()
     this.joined = new Sig()
@@ -84,9 +86,17 @@ export default class WseServer {
     this.connected = new Sig()
     this.disconnected = new Sig()
     this.error = new Sig()
-    this.challenger = null
-    this.channel = new EE()
 
+    this.when = {
+      ignored: this.ignored.subscriber(),
+      joined: this.joined.subscriber(),
+      left: this.left.subscriber(),
+      connected: this.connected.subscriber(),
+      disconnected: this.disconnected.subscriber(),
+      error: this.error.subscriber(),
+    }
+
+    this.challenger = null
     this.logger = null
 
     if (init) this.init()

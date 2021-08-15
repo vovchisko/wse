@@ -29,7 +29,7 @@ execute('cra-challenge connect and ready', async (success, fail) => {
     solve(challenge.a - challenge.b) // clearly wrong answer
   })
 
-  client.ready.on(welcome_data => {
+  client.when.ready(welcome_data => {
     fail('welcome message received')
   })
 

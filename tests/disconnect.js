@@ -10,7 +10,7 @@ execute('client connection closure', async (success, fail) => {
         ? success('closed well')
         : fail('close code/reason is invalid')
   })
-  client.ready.on(() => client.close(1002, 'CUSTOM_REASON'))
+  client.when.ready(() => client.close(1002, 'CUSTOM_REASON'))
 
   await client.connect(VALID_SECRET, { client_meta: 1 })
 })

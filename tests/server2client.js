@@ -11,7 +11,7 @@ execute('server > client', async (success, fail) => {
         : fail('invalid data from server')
   })
 
-  server.joined.on((client) => {
+  server.when.joined((client) => {
     client.send('test-message', { value: 42 })
   })
 

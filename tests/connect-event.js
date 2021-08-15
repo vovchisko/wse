@@ -5,7 +5,7 @@ import { create_pair, VALID_SECRET } from './_helpers.js'
 execute('connect event', async (success, fail) => {
   const { server, client } = create_pair()
 
-  client.connected.on(welcome_data => {
+  client.when.connected(welcome_data => {
     server.log('very welcomed', welcome_data)
     success('welcome message received')
   })

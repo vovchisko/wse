@@ -10,7 +10,7 @@ execute('swarm disconnect', async (success, fail) => {
   const server = create_server()
   const clients = create_clients_swarm(total_clients)
 
-  server.joined.on(c => {
+  server.when.joined(c => {
     server.log('joined', c.id)
     process.nextTick(() => {
       c.drop('BECAUSE-OF-TEST')

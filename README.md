@@ -50,7 +50,7 @@ const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
 
 await client.connect(VALID_SECRET)
 
-client.ready.on(() => {
+client.when.ready(() => {
   client.send('test-message', { a: 1, b: 2 })
 })
 ```

@@ -6,7 +6,7 @@ execute('invalid message', async (success, fail) => {
   const server = create_server()
 
 
-  server.error.on((err, message) => {
+  server.when.error((err, message) => {
     err instanceof SyntaxError && message
         ? success('error event fired')
         : fail('error event has invalid arguments')
