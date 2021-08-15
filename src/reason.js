@@ -1,8 +1,8 @@
-module.exports = {
-  OTHER_CLIENT_CONECTED: 'wse-other-client-connection',
-  NOT_AUTHORIZED: 'wse-not-authorized',
-  SIGNOUT: 'wse-signout',
-  PROTOCOL_ERR: 'wse-invalid-protocol',
-  NO_REASON: 'wse-unknown-reason',
-  BY_CLIENT: 'wse-by-client',
+export default {
+  OTHER_CLIENT_CONNECTED: 'WSE_OTHER_CLIENT_CONNECTED',
+  NOT_AUTHORIZED: 'WSE_NOT_AUTHORIZED',
+  SIGN_OUT: 'WSE_SIGN_OUT',
+  PROTOCOL_ERR: 'WSE_PROTOCOL_ERR',
+  NO_REASON: 'WSE_NO_REASON',
+  BY_CLIENT: 'WSE_BY_CLIENT',
 }

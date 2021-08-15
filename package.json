@@ -1,11 +1,12 @@
 {
   "name": "wse",
-  "version": "2.0.5",
+  "version": "3.0.0",
   "description": "Suspicious wrapper for ws with auth and custom protocol support.",
   "main": "node.js",
   "browser": "browser.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "repository": {
     "type": "git",
@@ -25,12 +26,16 @@
   },
   "homepage": "https://github.com/vovchisko/wse#readme",
   "dependencies": {
+    "a-signal": "^2.1.0",
     "eventemitter3": "^4.0.0",
     "isomorphic-ws": "^4.0.1",
-    "ws": "^7.2.1"
+    "ws": "^8.1.0"
   },
   "devDependencies": {
-    "bufferutil": "^4.0.1",
-    "utf-8-validate": "^5.0.2"
+    "test-a-bit": "^1.0.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.3",
+    "utf-8-validate": "^5.0.5"
   }
 }
