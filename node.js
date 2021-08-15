@@ -1,6 +1,5 @@
-module.exports = {
-  WseClient: require('./src/client'),
-  WseServerMult: require('./src/server-mult'),
-  WseServer: require('./src/server'),
-  WSE_REASON: require('./src/reason'),
-}
+import WseClient  from './src/client.js'
+import WseServer  from './src/server.js'
+import WSE_REASON from './src/reason.js'
+
+export { WseClient, WseServer, WSE_REASON }

@@ -1,7 +1,8 @@
-class WseDefaultProtocol {
+export default class WseJSON {
   constructor () {
     this.name = 'wse-default-json'
     this.hi = 'hi'
+    this.challenge = 'challenge'
     this.welcome = 'welcome'
   }
 
@@ -12,9 +13,8 @@ class WseDefaultProtocol {
     })
   }
 
-  unpack (string) {
-    return JSON.parse(string)
+  unpack (encoded) {
+    return JSON.parse(encoded)
   }
 }
 
-module.exports = WseDefaultProtocol
