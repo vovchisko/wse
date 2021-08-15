@@ -15,7 +15,5 @@ execute('server > client', async (success, fail) => {
     client.send('test-message', { value: 42 })
   })
 
-  server.init()
-
   await client.connect(VALID_SECRET, { client_meta: 1 })
 })

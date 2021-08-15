@@ -44,30 +44,37 @@ export default class WseServer {
    *
    * @param {Object} options see https://github.com/websockets/ws/#readme.
    * @param {Function|WseServer.incoming_handler} options.incoming Will be called for each new connection.
+   * @param {Number} options.cpu_limit How many connections allowed per user
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
-   * @param {WebSocket.Server} [options.ws_server=WebSocket.Server] Tt is possible to override `ws` implementation. Use with caution.
-   */
-  /**
    *
-   * @param protocol
-   * @param incoming
-   * @param ws_server
-   * @param cpu_limit
-   * @param ws_params
+   * and classic ws params...
+   * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
+   * @param {Boolean} [options.clientTracking=true] Specifies whether or not to track clients
+   * @param {Function} [options.handleProtocols] A hook to handle protocols
+   * @param {String} [options.host] The hostname where to bind the server
+   * @param {Number} [options.maxPayload=104857600] The maximum allowed message size
+   * @param {Boolean} [options.noServer=false] Enable no server mode
+   * @param {String} [options.path] Accept only connections matching this path
+   * @param {(Boolean|Object)} [options.perMessageDeflate=false] Enable/disable permessage-deflate
+   * @param {Number} [options.port] The port where to bind the server
+   * @param {(http.Server|https.Server)} [options.server] A pre-created HTTP/S server to use
+   * @param {Boolean} [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
+   * @param {Function} [options.verifyClient] A hook to reject connections
+   * @param {Function} [callback] A listener for the `listening` event
    */
   constructor ({
     protocol = WseJSON,
     incoming,
-    ws_server = WebSocket.Server,
     cpu_limit = 1,
-    ...ws_params
+    init = true,
+    ...options
   }) {
     if (!incoming) throw new Error('incoming handler is missing!')
 
     this.clients = new Map(/* { ID: WseClient } */)
     this.protocol = new protocol()
-    this.ws_params = ws_params
-    this.ws_server = ws_server
+    this.options = options
+    this.server = null
     this.incoming_handler = incoming
     this.cpu_limit = cpu_limit
 
@@ -81,6 +88,8 @@ export default class WseServer {
     this.channel = new EE()
 
     this.logger = null
+
+    if (init) this.init()
   }
 
   use_challenge (challenger) {
@@ -193,8 +202,8 @@ export default class WseServer {
   }
 
   init () {
-    this.ws_server = new WebSocket.Server(this.ws_params)
-    this.ws_server.on('connection', (conn, req) => {
+    this.server = new WebSocket.Server(this.options)
+    this.server.on('connection', (conn, req) => {
       this.handle_connection(conn, req)
 
       conn.on('message', (message) => {
@@ -277,7 +286,7 @@ class WseClient {
   constructor (server, conn, meta = {}) {
     this.id = conn[_client_id]
     this.conns = new Map()
-    this.server = server
+    this.srv = server
     this.meta = conn[_meta]
     this.payload = conn[_payload]
 
@@ -286,7 +295,7 @@ class WseClient {
 
   _conn_add (conn) {
     this.conns.set(conn[_id], conn)
-    if (this.server.cpu_limit < this.conns.size) {
+    if (this.srv.cpu_limit < this.conns.size) {
       const key_to_delete = this.conns[Symbol.iterator]().next().value[0]
       this._conn_drop(key_to_delete, WSE_REASON.OTHER_CLIENT_CONNECTED)
     }
@@ -306,13 +315,13 @@ class WseClient {
 
     this.conns.delete(id)
 
-    this.server.disconnected.emit(conn, 1000, reason)
+    this.srv.disconnected.emit(conn, 1000, reason)
 
     if (this.conns.size === 0) {
-      this.server.drop_client(this.id, reason)
+      this.srv.drop_client(this.id, reason)
     }
 
-    this.server.log(`dropped ${ this.id }#${ id }`)
+    this.srv.log(`dropped ${ this.id }#${ id }`)
   }
 
   /**
@@ -326,13 +335,13 @@ class WseClient {
     if (conn_id) {
       const conn = this.conns.get(conn_id)
       if (conn.readyState === WebSocket.OPEN) {
-        conn.send(this.server.protocol.pack(c, dat))
+        conn.send(this.srv.protocol.pack(c, dat))
       }
     } else {
-      this.server.log(`send to ${ this.id }`, c, dat)
+      this.srv.log(`send to ${ this.id }`, c, dat)
       this.conns.forEach(conn => {
         if (conn.readyState === WebSocket.OPEN) {
-          conn.send(this.server.protocol.pack(c, dat))
+          conn.send(this.srv.protocol.pack(c, dat))
         }
       })
     }

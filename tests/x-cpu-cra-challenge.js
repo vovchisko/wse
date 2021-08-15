@@ -35,8 +35,6 @@ execute('x-cpu with cra', async (success, fail) => {
 
   server.use_challenge((payload, meta, challenge) => challenge({ a: 1, b: 2 }))
 
-  server.init()
-
   client1.challenge((quest, solve) => solve(quest.a + quest.b))
 
   client2.challenge((quest, solve) => solve('clearly-wrong-value'))

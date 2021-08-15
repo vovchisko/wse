@@ -11,8 +11,6 @@ execute('client > server: ignored message', async (success, fail) => {
         : fail('invalid data from client')
   })
 
-  server.init()
-
   await client.connect(VALID_SECRET)
   client.send('test', { value: 42 })
 })

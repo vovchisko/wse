@@ -27,8 +27,6 @@ execute('cra-challenge connect and ready', async (success, fail) => {
     challenge({ a: 1, b: 2 })
   })
 
-  server.init()
-
   client.challenge((challenge, solve) => {
     solve(challenge.a + challenge.b)
   })

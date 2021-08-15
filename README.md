@@ -33,7 +33,6 @@ function incoming ({ payload, identify, meta }) {
   }
 }
 
-server.init()
 server.broadcast('broad-message', { paylog: 'hey there!' })
 
 server.channel.on('test-message', (client, dat) => {

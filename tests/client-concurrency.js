@@ -8,8 +8,6 @@ execute('only one connection per client', async (success, fail) => {
   const client1 = create_client()
   const client2 = create_client()
 
-  server.init()
-
   client1.closed.on(async (code, reason) => {
     await wait(120) // wait a bit to ensure that client2 isn't closed
     reason === WSE_REASON.OTHER_CLIENT_CONNECTED

@@ -6,8 +6,6 @@ import { WSE_REASON }                  from '../node.js'
 execute('invalid message', async (success, fail) => {
   const server = create_server()
 
-  server.init()
-
   const fake_ws = new WS(`ws://localhost:${ WS_TEST_PORT }`, 'wse-default-json')
 
   fake_ws.on('close', (code, reason) => {

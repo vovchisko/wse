@@ -10,8 +10,6 @@ execute('only one connection per client', async (success, fail) => {
   const client3 = create_client()
   const client4 = create_client()
 
-  server.init()
-
   const result = []
   const check_result = () => {
     if (result.length === 4) {

@@ -9,8 +9,6 @@ execute('x-cpu messages', async (success, fail) => {
   const clientB = create_client()
   const clientC = create_client()
 
-  server.init()
-
   let received = { A: 0, B: 0, C: 0 }
 
   const check_messages = () => {

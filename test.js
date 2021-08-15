@@ -23,6 +23,7 @@ import { runner } from 'test-a-bit'
     { script: './tests/x-cpu-limit.js' },
     { script: './tests/x-cpu-messages.js' },
     { script: './tests/broadcast.js' },
+    { script: './tests/external-server.js' },
   ])
 })()
 

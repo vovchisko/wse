@@ -11,7 +11,5 @@ execute('client meta on join', async (success, fail) => {
         : fail('invalid meta on join')
   })
 
-  server.init()
-
   await client.connect(VALID_SECRET, { test_value: 123 })
 })

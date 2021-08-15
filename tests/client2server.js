@@ -11,8 +11,6 @@ execute('client > server', async (success, fail) => {
         : fail('invalid data from client')
   })
 
-  server.init()
-
   await client.connect(VALID_SECRET, { client_meta: 1 })
   client.send('test-message', { value: 42 })
 })

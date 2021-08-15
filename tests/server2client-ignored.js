@@ -15,7 +15,5 @@ execute('server > client: ignored message', async (success, fail) => {
     client.send('test', { value: 42 })
   })
 
-  server.init()
-
   await client.connect(VALID_SECRET, { client_meta: 1 })
 })

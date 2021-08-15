@@ -12,8 +12,6 @@ execute('invalid message', async (success, fail) => {
         : fail('error event has invalid arguments')
   })
 
-  server.init()
-
   const fake_ws = new WS(`ws://localhost:${ WS_TEST_PORT }`, 'wse-default-json')
 
   fake_ws.on('open', () => {

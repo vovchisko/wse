@@ -17,8 +17,6 @@ execute('swarm disconnect', async (success, fail) => {
     })
   })
 
-  server.init()
-
   for (let i = 0; i < clients.length; i++) {
     clients[i].connect(VALID_SECRET, { index: i })
     clients[i].closed.on((code, reason) => {
