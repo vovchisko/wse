@@ -9,6 +9,7 @@ import { runner } from 'test-a-bit'
     { script: './tests/count-10.js' },
     { script: './tests/count-1001.js' },
     { script: './tests/cra-challenge.js' },
+    { script: './tests/cra-fail.js' },
     { script: './tests/disconnect.js' },
     { script: './tests/invalid-auth.js' },
     { script: './tests/invalid-hi-drop.js' },

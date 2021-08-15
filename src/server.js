@@ -235,11 +235,11 @@ export default class WseServer {
 
       conn.on('close', (code, reason) => {
         if (conn[_client_id] && this.clients.has(conn[_client_id])) {
-          this.log(`${ conn[_client_id] }#${ conn[_id] }`, 'disconnected', code, reason)
+          this.log(`${ conn[_client_id] }#${ conn[_id] }`, 'disconnected', code, String(reason))
           const client = this.clients.get(conn[_client_id])
           client._conn_drop(conn[_id])
         } else {
-          this.log(`stranger disconnected`, code, reason)
+          this.log(`stranger disconnected`, code, String(reason))
           this.disconnected.emit(conn, code, reason)
         }
       })
@@ -261,7 +261,7 @@ export default class WseServer {
   drop_client (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
 
-    this.log(id, 'dropped', reason)
+    this.log(id, 'dropped', String(reason))
 
     const client = this.clients.get(id)
 

@@ -54,8 +54,8 @@ export default class WseClient {
       }
       this._ws.onerror = (e) => this.error.emit(e)
       this._ws.onclose = (event) => {
-        reject(event.reason)
-        this.closed.emit(event.code, event.reason)
+        reject(String(event.reason))
+        this.closed.emit(event.code, String(event.reason))
       }
     })
   }

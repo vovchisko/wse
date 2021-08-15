@@ -7,15 +7,14 @@ execute('cra-challenge connect and ready', async (success, fail) => {
   const options = {}
 
   function identify ({ payload, identify, meta, challenge }) {
-    if (payload === VALID_SECRET) {
+    if (payload === VALID_SECRET && challenge.response === 42) {
       const user_id = meta.user_id || 'USR-1'
-      if (challenge.response !== 3) fail('failed challenge')
-      identify(user_id, { hey: 'some additional data for the client' })
-
+      identify(user_id)
     } else {
       identify(false)
     }
   }
+
   const server = new WseServer({ port: WS_TEST_PORT, identify, ...options })
   const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }`, ...options })
 
@@ -23,18 +22,23 @@ execute('cra-challenge connect and ready', async (success, fail) => {
   if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)
 
   server.use_challenge((payload, meta, challenge) => {
-    challenge({ a: 1, b: 2 })
+    challenge({ a: 41, b: 1 })
   })
 
   client.challenge((challenge, solve) => {
-    solve(challenge.a + challenge.b)
+    solve(challenge.a - challenge.b) // clearly wrong answer
   })
 
   client.ready.on(welcome_data => {
-    success('welcome message received')
+    fail('welcome message received')
   })
 
-  await client.connect(VALID_SECRET, { user_id: 1 })
+  try {
+    await client.connect(VALID_SECRET, { user_id: 1 })
+    fail('client still passed')
+  } catch (e) {
+    success('dropped on challenge failure')
+  }
 })
 
 
