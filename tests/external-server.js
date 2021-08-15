@@ -8,8 +8,9 @@ execute('external httpServer', async (success, fail) => {
 
   const externalServer = new http.Server()
 
-  const server = new WseServer({ identify, server: externalServer })
+  const server = new WseServer({ identify, skipInit: true })
   const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
+
 
   if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)
   if (!process.send) client.logger = (args) => console.log('CLIENT::', ...args)
@@ -21,6 +22,8 @@ execute('external httpServer', async (success, fail) => {
   })
 
   externalServer.listen(WS_TEST_PORT)
+  server.init({ server: externalServer })
+
 
   await client.connect(VALID_SECRET, { client_meta: 1 })
 

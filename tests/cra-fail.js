@@ -21,7 +21,7 @@ execute('cra-challenge connect and ready', async (success, fail) => {
   if (!process.send) client.logger = (args) => console.log('CLIENT::', ...args)
   if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)
 
-  server.use_challenge((payload, meta, challenge) => {
+  server.useChallenge((payload, meta, challenge) => {
     challenge({ a: 41, b: 1 })
   })
 

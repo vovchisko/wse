@@ -33,7 +33,7 @@ execute('x-cpu with cra', async (success, fail) => {
   if (!process.send) client2.logger = (args) => console.log('CLIENT2::', ...args)
   if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)
 
-  server.use_challenge((payload, meta, challenge) => challenge({ a: 1, b: 2 }))
+  server.useChallenge((payload, meta, challenge) => challenge({ a: 1, b: 2 }))
 
   client1.challenge((quest, solve) => solve(quest.a + quest.b))
 

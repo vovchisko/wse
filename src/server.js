@@ -44,8 +44,9 @@ export default class WseServer {
    *
    * @param {Object} options see https://github.com/websockets/ws/#readme.
    * @param {Function|WseServer.identify} options.identify Will be called for each new connection.
-   * @param {Number} [options.cpu_limit=1] How many connections allowed per user
+   * @param {Number} [options.connPerUser=1] How many connections allowed per user
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
+   * @param {Boolean} [options.skipInit=false] Allow to skip init step, and attach external server later.
    *
    * and classic ws params...
    * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
@@ -60,23 +61,22 @@ export default class WseServer {
    * @param {(http.Server|https.Server)} [options.server] A pre-created HTTP/S server to use
    * @param {Boolean} [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
    * @param {Function} [options.verifyClient] A hook to reject connections
-   * @param {Function} [callback] A listener for the `listening` event
    */
   constructor ({
     protocol = WseJSON,
     identify,
-    cpu_limit = 1,
-    init = true,
+    connPerUser = 1,
+    skipInit = false,
     ...options
   }) {
     if (!identify) throw new Error('identify handler is missing!')
 
     this.clients = new Map()
     this.protocol = new protocol()
-    this.options = options
+    this.options = {}
     this.server = null
     this.identify = identify
-    this.cpu_limit = cpu_limit
+    this.connPerUser = connPerUser
 
     this.channel = new EE()
 
@@ -99,11 +99,83 @@ export default class WseServer {
     this.challenger = null
     this.logger = null
 
-    if (init) this.init()
+    if (skipInit) {
+      Object.assign(this.options, options)
+    } else {
+      this.init(options)
+    }
   }
 
+  /**
+   * Initialize server.
+   * Can override initial options.
+   *
+   * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
+   * @param {Boolean} [options.clientTracking=true] Specifies whether or not to track clients
+   * @param {Function} [options.handleProtocols] A hook to handle protocols
+   * @param {String} [options.host] The hostname where to bind the server
+   * @param {Number} [options.maxPayload=104857600] The maximum allowed message size
+   * @param {Boolean} [options.noServer=false] Enable no server mode
+   * @param {String} [options.path] Accept only connections matching this path
+   * @param {(Boolean|Object)} [options.perMessageDeflate=false] Enable/disable permessage-deflate
+   * @param {Number} [options.port] The port where to bind the server
+   * @param {(http.Server|https.Server)} [options.server] A pre-created HTTP/S server to use
+   * @param {Boolean} [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
+   * @param {Function} [options.verifyClient] A hook to reject connections
+   */
+  init (options) {
+    Object.assign(this.options, options)
 
-  use_challenge (challenger) {
+    this.server = new WebSocket.Server(this.options)
+    this.server.on('connection', (conn, req) => {
+      this._handle_connection(conn, req)
+
+      conn.on('message', (message) => {
+        if (conn[_valid_stat] === CLIENT_VALIDATING) return
+
+        let msg = ''
+        try {
+          msg = this.protocol.unpack(message)
+        } catch (err) {
+          this.error.emit(err, (`${ conn[_client_id] }#${ conn[_id] }` || 'stranger') + ' sent broken message')
+          if (conn[_client_id] && this.clients.has(conn[_client_id])) {
+            this.clients.get(conn[_client_id])._conn_drop(conn[_id], WSE_REASON.PROTOCOL_ERR)
+          } else {
+            conn.removeAllListeners()
+            conn.close(1000, WSE_REASON.PROTOCOL_ERR)
+          }
+          return
+        }
+
+        switch (conn[_valid_stat]) {
+          case CLIENT_VALID:
+            return this._handle_valid_message(conn, msg)
+          case CLIENT_STRANGER:
+          case CLIENT_CHALLENGED:
+            return this._handle_stranger_message(conn, msg)
+        }
+      })
+
+      conn.on('close', (code, reason) => {
+        if (conn[_client_id] && this.clients.has(conn[_client_id])) {
+          this.log(`${ conn[_client_id] }#${ conn[_id] }`, 'disconnected', code, String(reason))
+          const client = this.clients.get(conn[_client_id])
+          client._conn_drop(conn[_id])
+        } else {
+          this.log(`stranger disconnected`, code, String(reason))
+          this.disconnected.emit(conn, code, reason)
+        }
+      })
+
+      conn.onerror = (e) => this.error.emit(conn, e.code)
+    })
+  }
+
+  log () {
+    if (this.logger) this.logger(arguments)
+  }
+
+  useChallenge (challenger) {
     if (typeof challenger === 'function') {
       this.challenger = challenger
     } else {
@@ -111,12 +183,12 @@ export default class WseServer {
     }
   }
 
-  handle_connection (conn, req) {
+  _handle_connection (conn, req) {
     if (conn.protocol !== this.protocol.name) {
       return conn.close(1000, WSE_REASON.PROTOCOL_ERR)
     }
 
-    this.log('handle_connection', conn.protocol)
+    this.log('_handle_connection', conn.protocol)
 
     conn[_client_id] = null
     conn[_valid_stat] = CLIENT_STRANGER
@@ -131,14 +203,14 @@ export default class WseServer {
     conn.pub_host = conn.remote_addr
   }
 
-  handle_valid_message (conn, msg) {
-    this.log(conn[_client_id], 'handle_valid_message', msg)
+  _handle_valid_message (conn, msg) {
+    this.log(conn[_client_id], '_handle_valid_message', msg)
     const client = this.clients.get(conn[_client_id])
     this.channel.emit(msg.c, client, msg.dat, conn[_id]) || this.ignored.emit(client, msg.c, msg.dat, conn[_id])
   }
 
-  handle_stranger_message (conn, msg) {
-    this.log('handle_stranger_message', msg)
+  _handle_stranger_message (conn, msg) {
+    this.log('_handle_stranger_message', msg)
 
     if (conn[_valid_stat] === CLIENT_STRANGER) {
       if (msg.c === this.protocol.hi) {
@@ -171,7 +243,7 @@ export default class WseServer {
     }
 
     const identify = (client_id, welcome_payload) => {
-      this.identify_connection(conn, client_id, welcome_payload, msg)
+      this._identify_connection(conn, client_id, welcome_payload, msg)
     }
 
     this.identify({
@@ -185,7 +257,7 @@ export default class WseServer {
     })
   }
 
-  identify_connection (conn, client_id, welcome_payload, msg) {
+  _identify_connection (conn, client_id, welcome_payload, msg) {
     if (!client_id) {
       conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
       return
@@ -212,63 +284,13 @@ export default class WseServer {
     }
   }
 
-  init () {
-    this.server = new WebSocket.Server(this.options)
-    this.server.on('connection', (conn, req) => {
-      this.handle_connection(conn, req)
-
-      conn.on('message', (message) => {
-        if (conn[_valid_stat] === CLIENT_VALIDATING) return
-
-        let msg = ''
-        try {
-          msg = this.protocol.unpack(message)
-        } catch (err) {
-          this.error.emit(err, (`${ conn[_client_id] }#${ conn[_id] }` || 'stranger') + ' sent broken message')
-          if (conn[_client_id] && this.clients.has(conn[_client_id])) {
-            this.clients.get(conn[_client_id])._conn_drop(conn[_id], WSE_REASON.PROTOCOL_ERR)
-          } else {
-            conn.removeAllListeners()
-            conn.close(1000, WSE_REASON.PROTOCOL_ERR)
-          }
-          return
-        }
-
-        switch (conn[_valid_stat]) {
-          case CLIENT_VALID:
-            return this.handle_valid_message(conn, msg)
-          case CLIENT_STRANGER:
-          case CLIENT_CHALLENGED:
-            return this.handle_stranger_message(conn, msg)
-        }
-      })
-
-      conn.on('close', (code, reason) => {
-        if (conn[_client_id] && this.clients.has(conn[_client_id])) {
-          this.log(`${ conn[_client_id] }#${ conn[_id] }`, 'disconnected', code, String(reason))
-          const client = this.clients.get(conn[_client_id])
-          client._conn_drop(conn[_id])
-        } else {
-          this.log(`stranger disconnected`, code, String(reason))
-          this.disconnected.emit(conn, code, reason)
-        }
-      })
-
-      conn.onerror = (e) => this.error.emit(conn, e.code)
-    })
-  }
-
-  log () {
-    if (this.logger) this.logger(arguments)
-  }
-
   broadcast (c, dat) {
     this.clients.forEach((client) => {
       client.send(c, dat)
     })
   }
 
-  drop_client (id, reason = WSE_REASON.NO_REASON) {
+  dropClient (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
 
     this.log(id, 'dropped', String(reason))
@@ -281,12 +303,11 @@ export default class WseServer {
     this.clients.delete(client.id)
   }
 
-  send_to (client_id, c, dat, conn_id) {
+  send (client_id, c, dat, conn_id) {
     const client = this.clients.get(client_id)
     if (client) client.send(c, dat, conn_id)
   }
 }
-
 
 class WseClient {
   /**
@@ -306,7 +327,7 @@ class WseClient {
 
   _conn_add (conn) {
     this.conns.set(conn[_id], conn)
-    if (this.srv.cpu_limit < this.conns.size) {
+    if (this.srv.connPerUser < this.conns.size) {
       const key_to_delete = this.conns[Symbol.iterator]().next().value[0]
       this._conn_drop(key_to_delete, WSE_REASON.OTHER_CLIENT_CONNECTED)
     }
@@ -329,7 +350,7 @@ class WseClient {
     this.srv.disconnected.emit(conn, 1000, reason)
 
     if (this.conns.size === 0) {
-      this.srv.drop_client(this.id, reason)
+      this.srv.dropClient(this.id, reason)
     }
 
     this.srv.log(`dropped ${ this.id }#${ id }`)

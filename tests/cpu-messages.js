@@ -3,7 +3,7 @@ import { execute } from 'test-a-bit'
 import { create_client, create_server, VALID_SECRET } from './_helpers.js'
 
 execute('x-cpu messages', async (success, fail) => {
-  const server = create_server({ cpu_limit: 3 })
+  const server = create_server({ connPerUser: 3 })
 
   const clientA = create_client()
   const clientB = create_client()
@@ -39,5 +39,5 @@ execute('x-cpu messages', async (success, fail) => {
   await clientB.connect(VALID_SECRET, { user_id: 'UID1' })
   await clientC.connect(VALID_SECRET, { user_id: 'UID1' })
 
-  setTimeout(() => server.send_to('UID1', 'msg', { hey: 'there' }), 100)
+  setTimeout(() => server.send('UID1', 'msg', { hey: 'there' }), 100)
 })
