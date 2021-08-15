@@ -44,7 +44,7 @@ export default class WseServer {
    *
    * @param {Object} options see https://github.com/websockets/ws/#readme.
    * @param {Function|WseServer.identify} options.identify Will be called for each new connection.
-   * @param {Number} options.cpu_limit How many connections allowed per user
+   * @param {Number} [options.cpu_limit=1] How many connections allowed per user
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    *
    * and classic ws params...
