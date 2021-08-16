@@ -6,12 +6,12 @@ export const VALID_SECRET = 'valid-secret'
 export const INVALID_SECRET = 'invalid-secret'
 export const WS_TEST_PORT = 64000
 
-export function identify ({ payload, identify, meta }) {
+export function identify ({ payload, resolve, meta }) {
   if (payload === VALID_SECRET) {
     const user_id = meta.user_id || 'USR-' + USER_ID_COUNTER++
-    identify(user_id, { hey: 'some additional data for the client' })
+    resolve(user_id, { hey: 'some additional data for the client' })
   } else {
-    identify(false)
+    resolve(false)
   }
 }
 

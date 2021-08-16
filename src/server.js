@@ -242,14 +242,14 @@ export default class WseServer {
       }
     }
 
-    const identify = (client_id, welcome_payload) => {
+    const resolve = (client_id, welcome_payload) => {
       this._identify_connection(conn, client_id, welcome_payload, msg)
     }
 
     this.identify({
       payload: conn[_payload],
       meta: conn[_meta],
-      identify,
+      resolve,
       challenge: typeof this.challenger === 'function'
           ? { quest: conn[_challenge_quest], response: conn[_challenge_response] }
           : null,

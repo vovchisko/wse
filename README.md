@@ -24,12 +24,12 @@ import { WseServer } from 'wse'
 const server = new WseServer({ port: 8080, identify })
 
 // auth handler
-function identify ({ payload, identify, meta }) {
+function identify ({ payload, resolve, meta }) {
   if (payload === VALID_SECRET) {
     const user_id = 'any user id here'
-    identify(user_id, { hey: 'welcome back!' })
+    resolve(user_id, { hey: 'welcome back!' })
   } else {
-    identify(false)
+    resolve(false)
   }
 }
 

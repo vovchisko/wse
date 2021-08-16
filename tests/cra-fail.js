@@ -6,12 +6,12 @@ import { WseClient, WseServer }       from '../node.js'
 execute('cra-challenge connect and ready', async (success, fail) => {
   const options = {}
 
-  function identify ({ payload, identify, meta, challenge }) {
+  function identify ({ payload, resolve, meta, challenge }) {
     if (payload === VALID_SECRET && challenge.response === 42) {
       const user_id = meta.user_id || 'USR-1'
-      identify(user_id)
+      resolve(user_id)
     } else {
-      identify(false)
+      resolve(false)
     }
   }
 

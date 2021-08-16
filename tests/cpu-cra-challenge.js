@@ -3,15 +3,13 @@ import { execute } from 'test-a-bit'
 import { VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
 import { WseClient, WseServer }       from '../node.js'
 
-function identify ({ payload, identify, meta, challenge }) {
+function identify ({ payload, resolve, meta, challenge }) {
   if (payload === VALID_SECRET) {
     const user_id = meta.user_id || 'USR-1'
     if (challenge.response !== 3) return resolve(false)
-
-    identify(user_id, { hey: 'some additional data for the client' })
-
+    resolve(user_id, { hey: 'some additional data for the client' })
   } else {
-    identify(false)
+    resolve(false)
   }
 }
 

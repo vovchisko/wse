@@ -11,7 +11,6 @@ execute('external httpServer', async (success, fail) => {
   const server = new WseServer({ identify, skipInit: true })
   const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
 
-
   if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)
   if (!process.send) client.logger = (args) => console.log('CLIENT::', ...args)
 
