@@ -11,7 +11,7 @@ execute('connPerUser = 2', async (success, fail) => {
 
   client1.closed.on(async (code, reason) => {
     await wait(120) // wait a bit to ensure that client2 isn't closed
-    reason === WSE_REASON.OTHER_CLIENT_CONNECTED
+    reason === WSE_REASON.CLIENTS_CONCURRENCY
         ? success('1st client dropped as expected')
         : fail('invalid disconnect reason')
   })

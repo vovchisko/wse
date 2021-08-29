@@ -16,6 +16,10 @@
     "websoket",
     "ws",
     "websocket-auth",
+    "remote prodecuders",
+    "rp",
+    "cra",
+    "ws-rp",
     "ws-auth",
     "ws-protocol"
   ],
@@ -27,9 +31,9 @@
   "homepage": "https://github.com/vovchisko/wse#readme",
   "dependencies": {
     "a-signal": "^2.1.0",
-    "eventemitter3": "^4.0.0",
+    "eventemitter3": "^4.0.7",
     "isomorphic-ws": "^4.0.1",
-    "ws": "^8.1.0"
+    "ws": "^8.2.1"
   },
   "devDependencies": {
     "test-a-bit": "^1.0.0"

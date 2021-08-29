@@ -6,6 +6,11 @@ export const VALID_SECRET = 'valid-secret'
 export const INVALID_SECRET = 'invalid-secret'
 export const WS_TEST_PORT = 64000
 
+/**
+ * @param payload
+ * @param resolve
+ * @param meta
+ */
 export function identify ({ payload, resolve, meta }) {
   if (payload === VALID_SECRET) {
     const user_id = meta.user_id || 'USR-' + USER_ID_COUNTER++
@@ -15,6 +20,10 @@ export function identify ({ payload, resolve, meta }) {
   }
 }
 
+/**
+ * @param options
+ * @returns {WseServer}
+ */
 export function create_server (options = {}) {
   const server = new WseServer({ port: WS_TEST_PORT, identify, ...options })
 
@@ -25,6 +34,10 @@ export function create_server (options = {}) {
   return server
 }
 
+/**
+ * @param options
+ * @returns {WseClient}
+ */
 export function create_client (options = {}) {
   const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }`, ...options })
 
@@ -35,6 +48,10 @@ export function create_client (options = {}) {
   return client
 }
 
+/**
+ * @param options
+ * @returns {{server: WseServer, client: WseClient}}
+ */
 export function create_pair (options = {}) {
   return {
     server: create_server(options),
@@ -42,6 +59,11 @@ export function create_pair (options = {}) {
   }
 }
 
+/**
+ * @param count
+ * @param options
+ * @returns {WseClient[]}
+ */
 export function create_clients_swarm (count = 2, options = {}) {
   let clients = []
   for (let i = 0; i < count; i++) {

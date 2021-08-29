@@ -1,4 +1,4 @@
-export default class WseJSON {
+export class WseJSON {
   constructor () {
     this.name = 'wse-default-json'
     this.hi = 'hi'
@@ -6,10 +6,11 @@ export default class WseJSON {
     this.welcome = 'welcome'
   }
 
-  pack (c, dat) {
+  pack ({ c, dat = undefined, stamp = undefined }) {
     return JSON.stringify({
-      c: c,
-      dat: dat,
+      c,
+      dat,
+      stamp,
     })
   }
 
