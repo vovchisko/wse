@@ -16,6 +16,10 @@
     "websoket",
     "ws",
     "websocket-auth",
+    "remote prodecuders",
+    "rp",
+    "cra",
+    "ws-rp",
     "ws-auth",
     "ws-protocol"
   ],
