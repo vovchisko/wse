@@ -30,6 +30,3 @@ import { runner } from 'test-a-bit'
     { script: './tests/swarm-disconnect.js' },
   ])
 })()
-
-
-
