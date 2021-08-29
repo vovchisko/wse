@@ -13,7 +13,7 @@ execute('rp timeout', async (success, fail) => {
 
   await client.connect(VALID_SECRET)
   try {
-    const res = await client.call('test-rp', { value: 21 }, 200)
+    await client.call('test-rp', null, 200)
     fail('still responds')
   } catch (e) {
     if (e.code === WSE_CLIENT_ERRORS.RP_TIMEOUT) {
