@@ -30,7 +30,7 @@ execute('cra-challenge connect and ready', async (success, fail) => {
     solve(challenge.a + challenge.b)
   })
 
-  client.when.ready(welcome_data => {
+  client.when.ready(() => {
     success('welcome message received')
   })
 

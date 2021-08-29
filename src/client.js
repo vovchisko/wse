@@ -73,7 +73,7 @@ export class WseClient {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
     } else {
-      throw new WseError(WSE_CLIENT_ERRORS.INVALID_CHALLENGE_SOLVER)
+      throw new WseError(WSE_CLIENT_ERRORS.INVALID_CRA_HANDLER)
     }
   }
 

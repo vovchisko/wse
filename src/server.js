@@ -91,7 +91,7 @@ export class WseServer {
       error: this.error.subscriber(),
     }
 
-    this.challenger = null
+    this.cra_generator = null
     this.logger = null
 
     if (skipInit) {
@@ -177,11 +177,11 @@ export class WseServer {
     if (this.logger) this.logger(arguments)
   }
 
-  useChallenge (challenger) {
-    if (typeof challenger === 'function') {
-      this.challenger = challenger
+  useChallenge (cra_generator) {
+    if (typeof cra_generator === 'function') {
+      this.cra_generator = cra_generator
     } else {
-      throw new WseError(WSE_SERVER_ERR.INVALID_CHALLENGER_FUNCTION)
+      throw new WseError(WSE_SERVER_ERR.INVALID_CRA_GENERATOR)
     }
   }
 
@@ -251,8 +251,8 @@ export class WseServer {
 
         Object.assign(conn[_meta], msg.dat.meta || {})
 
-        if (typeof this.challenger === 'function') {
-          this.challenger(conn[_payload], conn[_meta], (quest) => {
+        if (typeof this.cra_generator === 'function') {
+          this.cra_generator(conn[_payload], conn[_meta], (quest) => {
             conn[_challenge_quest] = quest
             conn.send(this.protocol.pack({ c: 'challenge', dat: quest }))
             conn[_valid_stat] = CLIENT_CHALLENGED
@@ -282,7 +282,7 @@ export class WseServer {
       payload: conn[_payload],
       meta: conn[_meta],
       resolve,
-      challenge: typeof this.challenger === 'function'
+      challenge: typeof this.cra_generator === 'function'
           ? { quest: conn[_challenge_quest], response: conn[_challenge_response] }
           : null,
       id: conn[_id],
