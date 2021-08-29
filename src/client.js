@@ -1,9 +1,10 @@
-import WseJSON from './protocol.js'
-import EE      from 'eventemitter3'
-import Sig     from 'a-signal'
-import WS      from 'isomorphic-ws'
+import { WseJSON }                                                           from './protocol.js'
+import EE                                                                    from 'eventemitter3'
+import Sig                                                                   from 'a-signal'
+import WS                                                                    from 'isomorphic-ws'
+import { make_stamp, SIG_CALL, WSE_CLIENT_ERRORS, WSE_SERVER_ERR, WseError } from './common.js'
 
-export default class WseClient {
+export class WseClient {
   constructor ({ url, protocol = WseJSON, ...ws_options }) {
     this.protocol = new protocol()
     this.url = url
@@ -72,7 +73,7 @@ export default class WseClient {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
     } else {
-      throw new Error('challenge_solver argument is not a function!')
+      throw new WseError(WSE_CLIENT_ERRORS.INVALID_CHALLENGE_SOLVER)
     }
   }
 
@@ -84,16 +85,51 @@ export default class WseClient {
 
   send (c, dat) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
-      this._ws.send(this.protocol.pack(c, dat))
+      this._ws.send(this.protocol.pack({ c, dat }))
       this.log('send', c, dat)
     } else {
-      this.error.emit('error', new Error('socket-not-opened'))
+      this.error.emit('error', new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED))
     }
   }
 
   close (code = 1000, reason = 'BY_CLIENT') {
     this.log('closed', code, String(reason))
     if (this._ws) this._ws.close(code, String(reason))
+  }
+
+  async call (c, dat, tO = 20000) {
+    if (this._ws && this._ws.readyState === WS.OPEN) {
+      return new Promise((resolve, reject) => {
+        const stamp = [ SIG_CALL, c, make_stamp() ].join(':')
+
+        const handler = (dat) => {
+          if (dat.result) {
+            resolve(dat.result)
+          } else {
+            let err_code = WSE_CLIENT_ERRORS.RP_UNKNOWN_ERROR
+            if (dat.error && dat.error.code) {
+              if (dat.error.code === WSE_SERVER_ERR.RP_NOT_REGISTERED) err_code = WSE_CLIENT_ERRORS.RP_NOT_EXISTS
+              if (dat.error.code === WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP) err_code = WSE_CLIENT_ERRORS.RP_FAILED
+            }
+            return reject(new WseError(err_code))
+          }
+        }
+
+        this.channel.once(stamp, handler)
+
+        setTimeout(() => {
+          this.channel.off(stamp, handler)
+          reject(new WseError(WSE_CLIENT_ERRORS.RP_TIMEOUT))
+        }, tO)
+
+        this._ws.send(this.protocol.pack({ c, dat, stamp }))
+        this.log(stamp, dat)
+      })
+    } else {
+      const err = new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED)
+      this.error.emit('error', err)
+      throw err
+    }
   }
 
   log () {
