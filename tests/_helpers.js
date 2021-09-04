@@ -1,6 +1,3 @@
-import { WseServer } from '../src/server.js'
-import { WseClient } from '../src/client.js'
-
 let USER_ID_COUNTER = 100
 
 export const SECRET = 'valid-secret'

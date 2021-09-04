@@ -6,6 +6,7 @@ import { WseServer }                 from '../src/server.js'
 execute('invalid message', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
 
+  const fake_ws = new WS(WS_URL, 'wse-default-json')
 
   server.when.error((err, message) => {
     err instanceof SyntaxError && message
@@ -13,7 +14,6 @@ execute('invalid message', async (success, fail) => {
         : fail('error event has invalid arguments')
   })
 
-  const fake_ws = new WS(WS_URL, 'wse-default-json')
 
   fake_ws.on('open', () => {
     fake_ws.send('suck my balls!')
