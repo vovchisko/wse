@@ -1,14 +1,16 @@
 import { execute } from 'test-a-bit'
 
-import { create_client, create_server, VALID_SECRET } from './_helpers.js'
+import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
+import { WseServer }                         from '../src/server.js'
+import { WseClient }                         from '../src/client.js'
 
 execute('only one connection per client', async (success, fail) => {
-  const server = create_server()
+  const server = new WseServer({ port: WS_PORT, identify })
 
-  const client1 = create_client()
-  const client2 = create_client()
-  const client3 = create_client()
-  const client4 = create_client()
+  const client1 = new WseClient({ url: WS_URL })
+  const client2 = new WseClient({ url: WS_URL })
+  const client3 = new WseClient({ url: WS_URL })
+  const client4 = new WseClient({ url: WS_URL })
 
   const result = []
   const check_result = () => {
@@ -18,30 +20,30 @@ execute('only one connection per client', async (success, fail) => {
     }
   }
 
-  client1.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client1.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
-  client2.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client2.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
-  client3.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client3.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
-  client4.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client4.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
-  await client1.connect(VALID_SECRET, { user_id: 'UID1' })
-  await client2.connect(VALID_SECRET, { user_id: 'UID2' })
-  await client3.connect(VALID_SECRET, { user_id: 'UID3' })
-  await client4.connect(VALID_SECRET, { user_id: 'UID4' })
+  await client1.connect(SECRET, { user_id: 'UID1' })
+  await client2.connect(SECRET, { user_id: 'UID2' })
+  await client3.connect(SECRET, { user_id: 'UID3' })
+  await client4.connect(SECRET, { user_id: 'UID4' })
 
   server.broadcast('broad-message', { test: '42' })
 })

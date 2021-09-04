@@ -1,12 +1,15 @@
 import { execute } from 'test-a-bit'
 
-import { create_pair, VALID_SECRET } from './_helpers.js'
-import { WSE_CLIENT_ERRORS }         from '../src/common.js'
+import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
+import { WSE_CLIENT_ERRORS }                 from '../src/common.js'
+import { WseServer }                         from '../src/server.js'
+import { WseClient }                         from '../src/client.js'
 
 execute('rp not existing call', async (success, fail) => {
-  const { client } = create_pair()
+  const server = new WseServer({ port: WS_PORT, identify })
+  const client = new WseClient({ url: WS_URL })
 
-  await client.connect(VALID_SECRET, { client_meta: 1 })
+  await client.connect(SECRET, { client_meta: 1 })
 
   try {
     await client.call('no-existing-rp')

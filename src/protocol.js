@@ -6,12 +6,12 @@ export class WseJSON {
     this.welcome = 'welcome'
   }
 
-  pack ({ c, dat = undefined, stamp = undefined }) {
-    return JSON.stringify({
-      c,
-      dat,
+  pack ({ type, payload = undefined, stamp = undefined }) {
+    return JSON.stringify([
+      type,
+      payload,
       stamp,
-    })
+    ])
   }
 
   unpack (encoded) {

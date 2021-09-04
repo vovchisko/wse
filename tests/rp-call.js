@@ -1,16 +1,19 @@
 import { execute } from 'test-a-bit'
 
-import { create_pair, VALID_SECRET, wait } from './_helpers.js'
+import { identify, SECRET, wait, WS_PORT, WS_URL } from './_helpers.js'
+import { WseServer }                               from '../src/server.js'
+import { WseClient }                               from '../src/client.js'
 
 execute('rp call', async (success, fail) => {
-  const { server, client } = create_pair()
+  const server = new WseServer({ port: WS_PORT, identify })
+  const client = new WseClient({ url: WS_URL })
 
-  server.register('test-rp', async (client, dat) => {
+  server.register('test-rp', async (client, payload) => {
     await wait(100)
-    return dat.value * 2
+    return payload.value * 2
   })
 
-  await client.connect(VALID_SECRET, { client_meta: 1 })
+  await client.connect(SECRET, { client_meta: 1 })
   try {
     const res = await client.call('test-rp', { value: 21 })
     if (res === 42) success('42 is correct response from rp')
