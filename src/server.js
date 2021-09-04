@@ -23,7 +23,7 @@ export class WseServer {
   /**
    * Manage identify connections.
    *
-   * @callback WseServer.identify
+   * @callback WseServer.identifyCallback
    * @param {String} params.identity JWT or any other type of secret
    * @param {Object} params.meta optional data from the client
    * @param {Function} params.identify call it with user ID or any other identifier. falsy argument will reject connection.
@@ -33,10 +33,19 @@ export class WseServer {
    */
 
   /**
+   * Generate CRA-auth challenge
+   *
+   * @callback WseServer.CraGenerator
+   * @param {*} identity identity, presented by user
+   * @param {Object} params.meta optional data from the client
+   * @param {Function} params.quest function that accepts quest payload. will be send to the user.
+   */
+
+  /**
    * WseServer class.
    *
    * @param {Object} options see https://github.com/websockets/ws/#readme.
-   * @param {Function|WseServer.identify} options.identify Will be called for each new connection.
+   * @param {Function|WseServer.identifyCallback} options.identify Will be called for each new connection.
    * @param {Number} [options.connPerUser=1] How many connections allowed per user
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    * @param {Boolean} [options.skipInit=false] Allow to skip init step, and attach external server later.
@@ -172,6 +181,10 @@ export class WseServer {
     })
   }
 
+  /**
+   * Generate challenge for connected user.
+   * @param {WseServer.CraGenerator} cra_generator
+   */
   useChallenge (cra_generator) {
     if (typeof cra_generator === 'function') {
       this.cra_generator = cra_generator
@@ -371,7 +384,7 @@ class WseClient {
 
   /**
    * Send a message to the client
-   * @param {string} type - message id
+   * @param {string} type - message type
    * @param {string|number|object} payload - identity
    * @param {string} conn_id id of specific connection to send. omit to send on al the connections of this client
    * @returns {boolean} - true if connection was opened, false - if not.
@@ -391,6 +404,10 @@ class WseClient {
     }
   }
 
+  /**
+   * Drop client
+   * @param reason
+   */
   drop (reason = WSE_REASON.NO_REASON) {
     this.conns.forEach((val, key) => this._conn_drop(key, reason))
   }

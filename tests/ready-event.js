@@ -8,11 +8,7 @@ execute('connect and ready', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  client.when.ready(welcome_data => success('welcome message received'))
+  client.when.ready(payload => success('welcome message received'))
 
   await client.connect(SECRET, { client_meta: 1 })
 })
-
-
-
-

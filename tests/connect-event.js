@@ -8,7 +8,7 @@ execute('connect event', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  client.when.connected(welcome_data => {
+  client.when.connected(payload => {
     success('welcome message received')
   })
 

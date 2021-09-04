@@ -18,17 +18,15 @@ execute('cra-challenge connect and ready', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify: identifyWithCra })
   const client = new WseClient({ url: WS_URL })
 
-  server.useChallenge((identity, meta, challenge) => {
-    challenge({ a: 1, b: 2 })
+  server.useChallenge((identity, meta, quest) => {
+    quest({ a: 1, b: 2 })
   })
 
   client.challenge((challenge, solve) => {
     solve(challenge.a + challenge.b)
   })
 
-  client.when.ready(() => {
-    success('welcome message received')
-  })
+  client.when.ready(() => success('welcome message received'))
 
   await client.connect(SECRET, { user_id: 1 })
 })
