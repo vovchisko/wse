@@ -18,7 +18,6 @@ npm install wse -s
 
 ```JavaScript
 // server
-
 import { WseServer } from 'wse'
 
 // auth handler
@@ -36,8 +35,9 @@ const server = new WseServer({ port: 4200, identify })
 server.broadcast('broad-message', { paylog: 'hey there!' })
 
 server.channel.on('test-message', (client, dat) => {
-  console.log('we got test-message from', client.id)
-  console.log(dat)
+  console.log('we got test-message from', client.id, dat)
+
+  client.send('welcome-here', { payload: 42 })
 })
 
 ```
@@ -53,11 +53,14 @@ await client.connect(SECRET)
 client.when.ready(() => {
   client.send('test-message', { a: 1, b: 2 })
 })
+
+client.channel.on('welcome-here', (dat) => {
+  console.log('got it', dat)
+})
 ```
 
 > API Docs is in progress now.
 > For more examples see: https://github.com/vovchisko/wse/tree/master/tests
-
 
 ### Opt-in for performance
 
