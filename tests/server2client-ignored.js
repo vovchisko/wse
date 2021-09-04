@@ -8,8 +8,8 @@ execute('server > client: ignored message', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  client.when.ignored((c, dat) => {
-    dat.value === 42 && c === 'test'
+  client.when.ignored((type, payload) => {
+    payload.value === 42 && type === 'test'
         ? success('correctly fired about ignored msg')
         : fail('invalid data on ignored message')
   })

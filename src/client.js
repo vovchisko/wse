@@ -33,29 +33,29 @@ export class WseClient {
     this._ws = null
   }
 
-  connect (payload = '', meta = {}) {
+  connect (identity = '', meta = {}) {
     return new Promise((resolve, reject) => {
       this.reused++
       this._ws = new WS(this.url, this.protocol.name, this.ws_options)
 
       this._ws.onopen = () => {
-        this.send(this.protocol.hi, { payload, meta })
-        this.connected.emit(payload, meta)
+        this.send(this.protocol.hi, { identity, meta })
+        this.connected.emit(identity, meta)
       }
       this._ws.onmessage = (message) => {
-        let m = this.protocol.unpack(message.data)
+        let [ type, payload ] = this.protocol.unpack(message.data)
 
-        if (m.c === this.protocol.challenge) {
+        if (type === this.protocol.challenge) {
           if (typeof this.challenge_solver === 'function') {
-            this.challenge_solver(m.dat, (solution) => {
+            this.challenge_solver(payload, (solution) => {
               this.send(this.protocol.challenge, solution)
             })
             return
           }
         }
-        if (m.c === this.protocol.welcome) {
-          this.ready.emit(m.dat)
-          resolve(m.dat)
+        if (type === this.protocol.welcome) {
+          this.ready.emit(payload)
+          resolve(payload)
         }
         this._ws.onmessage = (message) => { this._process_msg(message) }
       }
@@ -76,14 +76,13 @@ export class WseClient {
   }
 
   _process_msg (message) {
-    let m = this.protocol.unpack(message.data)
-    // fire `ignored` signal if not listeners found for this message
-    return this.channel.emit(m.c, m.dat) || this.ignored.emit(m.c, m.dat)
+    let [ type, payload ] = this.protocol.unpack(message.data)
+    return this.channel.emit(type, payload) || this.ignored.emit(type, payload)
   }
 
-  send (c, dat) {
+  send (type, payload) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
-      this._ws.send(this.protocol.pack({ c, dat }))
+      this._ws.send(this.protocol.pack({ type, payload }))
     } else {
       this.error.emit('error', new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED))
     }
@@ -95,24 +94,25 @@ export class WseClient {
 
   /**
    * Send RP request to the server.
-   * @param c - name of RP
-   * @param [dat] - payload
+   * @param rp - name of RP
+   * @param [data] - identity
    * @param [tO] - timeout
    * @returns {Promise<*>}
    */
-  async call (c, dat, tO = this.timeout) {
+  async call (rp, data, tO = this.timeout) {
+    if (!rp || typeof rp !== 'string') throw new Error('rp_name not a string')
     if (this._ws && this._ws.readyState === WS.OPEN) {
       return new Promise((resolve, reject) => {
-        const stamp = [ '~call', c, make_stamp() ].join(':')
+        const stamp = [ '~call', rp, make_stamp() ].join(':')
 
-        const handler = (dat) => {
-          if (dat.result) {
-            resolve(dat.result)
+        const handler = (payload) => {
+          if (payload.result) {
+            resolve(payload.result)
           } else {
             let err_code = WSE_CLIENT_ERRORS.RP_UNKNOWN_ERROR
-            if (dat.error && dat.error.code) {
-              if (dat.error.code === WSE_SERVER_ERR.RP_NOT_REGISTERED) err_code = WSE_CLIENT_ERRORS.RP_NOT_EXISTS
-              if (dat.error.code === WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP) err_code = WSE_CLIENT_ERRORS.RP_FAILED
+            if (payload.error && payload.error.code) {
+              if (payload.error.code === WSE_SERVER_ERR.RP_NOT_REGISTERED) err_code = WSE_CLIENT_ERRORS.RP_NOT_EXISTS
+              if (payload.error.code === WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP) err_code = WSE_CLIENT_ERRORS.RP_FAILED
             }
             return reject(new WseError(err_code))
           }
@@ -128,7 +128,7 @@ export class WseClient {
         }
 
         // todo: should we pass tO to the server?
-        this._ws.send(this.protocol.pack({ c, dat, stamp }))
+        this._ws.send(this.protocol.pack({ type: rp, payload: data, stamp }))
       })
     } else {
       const err = new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED)

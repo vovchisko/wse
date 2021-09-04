@@ -4,8 +4,8 @@ import { SECRET, WS_PORT, WS_URL } from './_helpers.js'
 import { WseServer }               from '../src/server.js'
 import { WseClient }               from '../src/client.js'
 
-function identify ({ payload, resolve, meta, challenge }) {
-  if (payload === SECRET) {
+function identify ({ identity, resolve, meta, challenge }) {
+  if (identity === SECRET) {
     const user_id = meta.user_id || 'USR-1'
     if (challenge.response !== 3) return resolve(false)
     resolve(user_id, { hey: 'some additional data for the client' })
@@ -28,7 +28,7 @@ execute('x-cpu with cra', async (success, fail) => {
   const client1 = new WseClient({ url: WS_URL })
   const client2 = new WseClient({ url: WS_URL })
 
-  server.useChallenge((payload, meta, challenge) => challenge({ a: 1, b: 2 }))
+  server.useChallenge((identity, meta, challenge) => challenge({ a: 1, b: 2 }))
   client1.challenge((quest, solve) => solve(quest.a + quest.b))
   client2.challenge((quest, solve) => solve('clearly-wrong-value'))
 

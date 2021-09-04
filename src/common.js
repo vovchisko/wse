@@ -38,10 +38,10 @@ export function make_stamp (len = 10) {
 }
 
 export class WseError extends Error {
-  constructor (code, payload = {}) {
+  constructor (code, identity = {}) {
     super(code)
     this.type = 'wse-error'
     this.code = code
-    this.payload = payload
+    this.identity = identity
   }
 }

@@ -9,7 +9,7 @@ execute('rp timeout', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  server.register('test-rp', async (client, dat) => {
+  server.register('test-rp', async (client, payload) => {
     await wait(60000)
     return 1
   })

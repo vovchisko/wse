@@ -9,17 +9,17 @@ execute('count together to 10', async (success, fail) => {
   const client = new WseClient({ url: WS_URL })
 
   let server_var = 0
-  server.channel.on('count', (c, dat) => {
-    server_var = dat.count
+  server.channel.on('count', (type, payload) => {
+    server_var = payload.count
     server_var += 1
-    c.send('count', { count: server_var })
+    type.send('count', { count: server_var })
   })
 
   let client_var = 0
-  client.channel.on('count', (dat) => {
-    if (dat.count >= 10) return success(`${ dat.count }!`)
+  client.channel.on('count', (payload) => {
+    if (payload.count >= 10) return success(`${ payload.count }!`)
 
-    client_var = dat.count
+    client_var = payload.count
     client_var += 1
     client.send('count', { count: client_var })
   })

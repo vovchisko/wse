@@ -8,9 +8,9 @@ execute('rp call', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  server.register('test-rp', async (client, dat) => {
+  server.register('test-rp', async (client, payload) => {
     await wait(100)
-    return dat.value * 2
+    return payload.value * 2
   })
 
   await client.connect(SECRET, { client_meta: 1 })

@@ -5,12 +5,12 @@ export const WS_PORT = 64000
 export const WS_URL = `ws://localhost:${ WS_PORT }`
 
 /**
- * @param payload
+ * @param identity
  * @param resolve
  * @param meta
  */
-export function identify ({ payload, resolve, meta }) {
-  if (payload === SECRET) {
+export function identify ({ identity, resolve, meta }) {
+  if (identity === SECRET) {
     const user_id = meta.user_id || 'USR-' + USER_ID_COUNTER++
     resolve(user_id, { hey: 'some additional data for the client' })
   } else {

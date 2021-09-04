@@ -16,7 +16,7 @@ execute('swarm connect', async (success, fail) => {
     clients.push(new WseClient({ url: WS_URL }))
   }
 
-  server.when.joined(c => {
+  server.when.joined(type => {
     points++
     if (points === total_clients) {
       success(`all ${ points } users connected`)

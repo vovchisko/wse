@@ -19,19 +19,19 @@ execute('x-cpu messages', async (success, fail) => {
     }
   }
 
-  clientA.channel.on('msg', (dat) => {
+  clientA.channel.on('msg', (payload) => {
     if (received.A) fail('message received more that once on client A')
     received.A++
     check_messages()
   })
 
-  clientB.channel.on('msg', (dat) => {
+  clientB.channel.on('msg', (payload) => {
     if (received.B) fail('message received more that once on client B')
     received.B++
     check_messages()
   })
 
-  clientC.channel.on('msg', (dat) => {
+  clientC.channel.on('msg', (payload) => {
     if (received.C) fail('message received more that once on client C')
     received.C++
     check_messages()

@@ -6,8 +6,8 @@ import { WseClient }               from '../src/client.js'
 
 execute('cra-challenge connect and ready', async (success, fail) => {
 
-  function identifyWithCra ({ payload, resolve, meta, challenge }) {
-    if (payload === SECRET && challenge.response === 42) {
+  function identifyWithCra ({ identity, resolve, meta, challenge }) {
+    if (identity === SECRET && challenge.response === 42) {
       const user_id = meta.user_id || 'USR-1'
       resolve(user_id)
     } else {
@@ -18,7 +18,7 @@ execute('cra-challenge connect and ready', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify: identifyWithCra })
   const client = new WseClient({ url: WS_URL })
 
-  server.useChallenge((payload, meta, challenge) => {
+  server.useChallenge((identity, meta, challenge) => {
     challenge({ a: 41, b: 1 })
   })
 

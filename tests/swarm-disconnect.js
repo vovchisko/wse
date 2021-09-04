@@ -16,9 +16,9 @@ execute('swarm disconnect', async (success, fail) => {
     clients.push(new WseClient({ url: WS_URL }))
   }
 
-  server.when.joined(c => {
+  server.when.joined(type => {
     process.nextTick(() => {
-      c.drop('BECAUSE-OF-TEST')
+      type.drop('BECAUSE-OF-TEST')
     })
   })
 

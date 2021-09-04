@@ -10,7 +10,7 @@ const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
 const CLIENT_CHALLENGED = 'CLIENT_CHALLENGED'
 const CLIENT_VALID = 'CLIENT_VALID'
 
-const _payload = Symbol('_payload')
+const _identity = Symbol('_identity')
 const _meta = Symbol('_meta')
 const _challenge_quest = Symbol('_challenge_quest')
 const _challenge_response = Symbol('_challenge_response')
@@ -24,7 +24,7 @@ export class WseServer {
    * Manage identify connections.
    *
    * @callback WseServer.identify
-   * @param {String} params.payload JWT or any other type of secret
+   * @param {String} params.identity JWT or any other type of secret
    * @param {Object} params.meta optional data from the client
    * @param {Function} params.identify call it with user ID or any other identifier. falsy argument will reject connection.
    * @param {Object} params.challenge challenge quest and client response on it
@@ -127,26 +127,28 @@ export class WseServer {
       conn.on('message', (message) => {
         if (conn[_valid_stat] === CLIENT_VALIDATING) return
 
-        let msg
+        let type
+        let payload
+        let stamp
         try {
-          msg = this.protocol.unpack(message)
+          [ type, payload, stamp ] = this.protocol.unpack(message)
 
           switch (conn[_valid_stat]) {
             case CLIENT_VALID:
-              if (msg.stamp) {
-                return this._handle_valid_call(conn, msg)
-              } else if (msg.c) {
-                return this._handle_valid_message(conn, msg)
+              if (stamp) {
+                return this._handle_valid_call(conn, type, payload, stamp)
+              } else if (type) {
+                return this._handle_valid_message(conn, type, payload)
               } else {
-                throw new WseError(WSE_SERVER_ERR.PROTOCOL_VIOLATION, { msg })
+                throw new WseError(WSE_SERVER_ERR.PROTOCOL_VIOLATION, { type, payload, stamp })
               }
             case CLIENT_STRANGER:
             case CLIENT_CHALLENGED:
-              return this._handle_stranger_message(conn, msg)
+              return this._handle_stranger_message(conn, type, payload)
           }
         } catch (err) {
-          if (!err.payload) err.payload = {}
-          err.payload.caused_by = conn[_client_id] ? `${ conn[_client_id] }#${ conn[_id] }` : 'stranger'
+          if (!err.identity) err.identity = {}
+          err.identity.caused_by = conn[_client_id] ? `${ conn[_client_id] }#${ conn[_id] }` : 'stranger'
           this.error.emit(err, conn)
           if (conn[_client_id] && this.clients.has(conn[_client_id])) {
             this.clients.get(conn[_client_id])._conn_drop(conn[_id], WSE_REASON.PROTOCOL_ERR)
@@ -196,27 +198,27 @@ export class WseServer {
     conn.pub_host = conn.remote_addr
   }
 
-  _handle_valid_message (conn, msg) {
+  _handle_valid_message (conn, type, payload) {
     const client = this.clients.get(conn[_client_id])
-    this.channel.emit(msg.c, client, msg.dat, conn[_id]) || this.ignored.emit(client, msg.c, msg.dat, conn[_id])
+    this.channel.emit(type, client, payload, conn[_id]) || this.ignored.emit(client, type, payload, conn[_id])
   }
 
-  async _handle_valid_call (conn, msg) {
+  async _handle_valid_call (conn, type, payload, stamp) {
     const client = this.clients.get(conn[_client_id])
     let result = {}
-    if (this._rps.has(msg.c)) {
-      const rp = this._rps.get(msg.c)
+    if (this._rps.has(type)) {
+      const rp = this._rps.get(type)
       try {
-        result.result = await rp(client, msg.dat, conn[_id])
+        result.result = await rp(client, payload, conn[_id])
       } catch (e) {
         result.error = { code: WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP }
-        this.error.emit(new WseError(WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP, { msg }), conn)
+        this.error.emit(new WseError(WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP, { type, payload, stamp }), conn)
       }
     } else {
-      this.error.emit(new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, { msg }), conn)
+      this.error.emit(new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, { type, payload, stamp }), conn)
       result.error = { code: WSE_SERVER_ERR.RP_NOT_REGISTERED }
     }
-    client.send(msg.stamp, result, conn[_id])
+    client.send(stamp, result, conn[_id])
   }
 
   register (rp, handler) {
@@ -229,18 +231,18 @@ export class WseServer {
     this._rps.delete(rp)
   }
 
-  _handle_stranger_message (conn, msg) {
+  _handle_stranger_message (conn, type, payload) {
     if (conn[_valid_stat] === CLIENT_STRANGER) {
-      if (msg.c === this.protocol.hi) {
+      if (type === this.protocol.hi) {
         conn[_valid_stat] = CLIENT_VALIDATING
-        conn[_payload] = msg.dat.payload
+        conn[_identity] = payload.identity
 
-        Object.assign(conn[_meta], msg.dat.meta || {})
+        Object.assign(conn[_meta], payload.meta || {})
 
         if (typeof this.cra_generator === 'function') {
-          this.cra_generator(conn[_payload], conn[_meta], (quest) => {
+          this.cra_generator(conn[_identity], conn[_meta], (quest) => {
             conn[_challenge_quest] = quest
-            conn.send(this.protocol.pack({ c: 'challenge', dat: quest }))
+            conn.send(this.protocol.pack({ type: 'challenge', payload: quest }))
             conn[_valid_stat] = CLIENT_CHALLENGED
           })
           return
@@ -252,19 +254,19 @@ export class WseServer {
     }
 
     if (conn[_valid_stat] === CLIENT_CHALLENGED) {
-      if (msg.c === this.protocol.challenge) {
-        conn[_challenge_response] = msg.dat
+      if (type === this.protocol.challenge) {
+        conn[_challenge_response] = payload
       } else {
         conn.close(1000, WSE_REASON.PROTOCOL_ERR)
       }
     }
 
     const resolve = (client_id, welcome_payload) => {
-      this._identify_connection(conn, client_id, welcome_payload, msg)
+      this._identify_connection(conn, client_id, welcome_payload, payload)
     }
 
     this.identify({
-      payload: conn[_payload],
+      identity: conn[_identity],
       meta: conn[_meta],
       resolve,
       challenge: typeof this.cra_generator === 'function'
@@ -274,7 +276,7 @@ export class WseServer {
     })
   }
 
-  _identify_connection (conn, client_id, welcome_payload, msg) {
+  _identify_connection (conn, client_id, welcome_payload, payload) {
     if (!client_id) {
       conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
       return
@@ -295,13 +297,13 @@ export class WseServer {
       this.clients.set(client.id, client)
       client.send(this.protocol.welcome, welcome_payload)
       this.connected.emit(conn)
-      this.joined.emit(client, msg.dat.meta || {})
+      this.joined.emit(client, payload.meta || {})
     }
   }
 
-  broadcast (c, dat) {
+  broadcast (type, payload) {
     this.clients.forEach((client) => {
-      client.send(c, dat)
+      client.send(type, payload)
     })
   }
 
@@ -316,9 +318,9 @@ export class WseServer {
     this.clients.delete(client.id)
   }
 
-  send (client_id, c, dat, conn_id) {
+  send (client_id, type, payload, conn_id) {
     const client = this.clients.get(client_id)
-    if (client) client.send(c, dat, conn_id)
+    if (client) client.send(type, payload, conn_id)
   }
 }
 
@@ -333,7 +335,7 @@ class WseClient {
     this.conns = new Map()
     this.srv = server
     this.meta = conn[_meta]
-    this.payload = conn[_payload]
+    this.identity = conn[_identity]
 
     this._conn_add(conn)
   }
@@ -369,21 +371,21 @@ class WseClient {
 
   /**
    * Send a message to the client
-   * @param {string} c - message id
-   * @param {string|number|object} dat - payload
+   * @param {string} type - message id
+   * @param {string|number|object} payload - identity
    * @param {string} conn_id id of specific connection to send. omit to send on al the connections of this client
    * @returns {boolean} - true if connection was opened, false - if not.
    */
-  send (c, dat, conn_id = '') {
+  send (type, payload, conn_id = '') {
     if (conn_id) {
       const conn = this.conns.get(conn_id)
       if (conn.readyState === WebSocket.OPEN) {
-        conn.send(this.srv.protocol.pack({ c, dat }))
+        conn.send(this.srv.protocol.pack({ type, payload }))
       }
     } else {
       this.conns.forEach(conn => {
         if (conn.readyState === WebSocket.OPEN) {
-          conn.send(this.srv.protocol.pack({ c, dat }))
+          conn.send(this.srv.protocol.pack({ type, payload }))
         }
       })
     }

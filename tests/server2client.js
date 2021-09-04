@@ -8,8 +8,8 @@ execute('server > client', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  client.channel.on('test-message', (dat) => {
-    dat.value === 42
+  client.channel.on('test-message', (payload) => {
+    payload.value === 42
         ? success('server sent message')
         : fail('invalid data from server')
   })

@@ -20,23 +20,23 @@ execute('only one connection per client', async (success, fail) => {
     }
   }
 
-  client1.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client1.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
-  client2.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client2.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
-  client3.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client3.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
-  client4.channel.on('broad-message', dat => {
-    result.push(dat.test)
+  client4.channel.on('broad-message', payload => {
+    result.push(payload.test)
     check_result()
   })
 
