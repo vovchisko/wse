@@ -1,20 +1,21 @@
 # WSE
 
-Client-centric WebSocket Protocol Expansion.
+Client-centric WebSocket Expansion.
 
 - Easy client management;
 - Messaging protocol;
 - Simple authorization handler;
 - Custom Messaging Protocol Processor for real racers.
 - Basic Challenge-response Auth handlers.
+- WS Remote Procedures.
 
 ## Installation
 
 ```bash
-npm install wse -s
+npm i wse -s
 ```
 
-## Basic Usage
+# Usage
 
 ```JavaScript
 // server
