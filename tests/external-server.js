@@ -1,15 +1,16 @@
 import { execute } from 'test-a-bit'
 
-import http                                     from 'http'
-import { identify, VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
-import { WseClient, WseServer }                 from '../node.js'
+import http                                  from 'http'
+import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
+import { WseServer }                         from '../src/server.js'
+import { WseClient }                         from '../src/client.js'
 
 execute('external httpServer', async (success, fail) => {
 
   const externalServer = new http.Server()
 
   const server = new WseServer({ identify, skipInit: true })
-  const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
+  const client = new WseClient({ url: WS_URL })
 
   server.channel.on('test-message', (client, dat) => {
     dat.value === 42
@@ -17,11 +18,11 @@ execute('external httpServer', async (success, fail) => {
         : fail('invalid data from client')
   })
 
-  externalServer.listen(WS_TEST_PORT)
+  externalServer.listen(WS_PORT)
   server.init({ server: externalServer })
 
 
-  await client.connect(VALID_SECRET, { client_meta: 1 })
+  await client.connect(SECRET, { client_meta: 1 })
 
   client.send('test-message', { value: 42 })
 })

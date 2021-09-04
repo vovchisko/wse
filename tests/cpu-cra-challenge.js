@@ -1,10 +1,11 @@
 import { execute } from 'test-a-bit'
 
-import { VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
-import { WseClient, WseServer }       from '../node.js'
+import { SECRET, WS_PORT, WS_URL } from './_helpers.js'
+import { WseServer }               from '../src/server.js'
+import { WseClient }               from '../src/client.js'
 
 function identify ({ payload, resolve, meta, challenge }) {
-  if (payload === VALID_SECRET) {
+  if (payload === SECRET) {
     const user_id = meta.user_id || 'USR-1'
     if (challenge.response !== 3) return resolve(false)
     resolve(user_id, { hey: 'some additional data for the client' })
@@ -23,22 +24,22 @@ execute('x-cpu with cra', async (success, fail) => {
     if (goals.c2disconnect && goals.c1connect) success('all correct')
   }
 
-  const server = new WseServer({ port: WS_TEST_PORT, identify })
-  const client1 = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
-  const client2 = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }` })
+  const server = new WseServer({ port: WS_PORT, identify })
+  const client1 = new WseClient({ url: WS_URL })
+  const client2 = new WseClient({ url: WS_URL })
 
   server.useChallenge((payload, meta, challenge) => challenge({ a: 1, b: 2 }))
   client1.challenge((quest, solve) => solve(quest.a + quest.b))
   client2.challenge((quest, solve) => solve('clearly-wrong-value'))
 
-  await client1.connect(VALID_SECRET, { user_id: 1 })
+  await client1.connect(SECRET, { user_id: 1 })
       .then((r) => {
         goals.c1connect = true
         checkGoals()
       })
       .catch((e) => fail('client1 disconnected'))
 
-  await client2.connect(VALID_SECRET, { user_id: 1 })
+  await client2.connect(SECRET, { user_id: 1 })
       .then((r) => fail('client2 connected successfully'))
       .catch((e) => {
         goals.c2disconnect = true

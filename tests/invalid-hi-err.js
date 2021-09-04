@@ -1,9 +1,10 @@
-import { execute }                     from 'test-a-bit'
-import { create_server, WS_TEST_PORT } from './_helpers.js'
-import WS                              from 'ws'
+import { execute }                   from 'test-a-bit'
+import { identify, WS_PORT, WS_URL } from './_helpers.js'
+import WS                            from 'ws'
+import { WseServer }                 from '../src/server.js'
 
 execute('invalid message', async (success, fail) => {
-  const server = create_server()
+  const server = new WseServer({ port: WS_PORT, identify })
 
 
   server.when.error((err, message) => {
@@ -12,7 +13,7 @@ execute('invalid message', async (success, fail) => {
         : fail('error event has invalid arguments')
   })
 
-  const fake_ws = new WS(`ws://localhost:${ WS_TEST_PORT }`, 'wse-default-json')
+  const fake_ws = new WS(WS_URL, 'wse-default-json')
 
   fake_ws.on('open', () => {
     fake_ws.send('suck my balls!')

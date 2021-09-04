@@ -1,14 +1,20 @@
 import { execute } from 'test-a-bit'
 
-import { create_clients_swarm, create_server, VALID_SECRET } from './_helpers.js'
+import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
+import { WseServer }                         from '../src/server.js'
+import { WseClient }                         from '../src/client.js'
 
 execute('swarm disconnect', async (success, fail) => {
 
   const total_clients = 20
   let points = 0
 
-  const server = create_server()
-  const clients = create_clients_swarm(total_clients)
+  const server = new WseServer({ port: WS_PORT, identify })
+
+  const clients = []
+  for (let i = 0; i < total_clients; i++) {
+    clients.push(new WseClient({ url: WS_URL }))
+  }
 
   server.when.joined(c => {
     process.nextTick(() => {
@@ -17,7 +23,7 @@ execute('swarm disconnect', async (success, fail) => {
   })
 
   for (let i = 0; i < clients.length; i++) {
-    clients[i].connect(VALID_SECRET, { index: i })
+    clients[i].connect(SECRET, { index: i })
     clients[i].closed.on((code, reason) => {
       if (code === 1000 && reason === 'BECAUSE-OF-TEST') {
         points++

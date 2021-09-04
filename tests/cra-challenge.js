@@ -1,13 +1,12 @@
 import { execute } from 'test-a-bit'
 
-import { VALID_SECRET, WS_TEST_PORT } from './_helpers.js'
-import { WseClient, WseServer }       from '../node.js'
+import { SECRET, WS_PORT, WS_URL } from './_helpers.js'
+import { WseServer }               from '../src/server.js'
+import { WseClient }               from '../src/client.js'
 
 execute('cra-challenge connect and ready', async (success, fail) => {
-  const options = {}
-
-  function identify ({ payload, resolve, meta, challenge }) {
-    if (payload === VALID_SECRET) {
+  function identifyWithCra ({ payload, resolve, meta, challenge }) {
+    if (payload === SECRET) {
       const user_id = meta.user_id || 'USR-1'
       if (challenge.response !== 3) fail('failed challenge')
       resolve(user_id, { hey: 'some additional data for the client' })
@@ -16,8 +15,8 @@ execute('cra-challenge connect and ready', async (success, fail) => {
     }
   }
 
-  const server = new WseServer({ port: WS_TEST_PORT, identify, ...options })
-  const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }`, ...options })
+  const server = new WseServer({ port: WS_PORT, identify: identifyWithCra })
+  const client = new WseClient({ url: WS_URL })
 
   server.useChallenge((payload, meta, challenge) => {
     challenge({ a: 1, b: 2 })
@@ -31,7 +30,7 @@ execute('cra-challenge connect and ready', async (success, fail) => {
     success('welcome message received')
   })
 
-  await client.connect(VALID_SECRET, { user_id: 1 })
+  await client.connect(SECRET, { user_id: 1 })
 })
 
 

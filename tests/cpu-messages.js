@@ -1,13 +1,15 @@
 import { execute } from 'test-a-bit'
 
-import { create_client, create_server, VALID_SECRET } from './_helpers.js'
+import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
+import { WseServer }                         from '../src/server.js'
+import { WseClient }                         from '../src/client.js'
 
 execute('x-cpu messages', async (success, fail) => {
-  const server = create_server({ connPerUser: 3 })
+  const server = new WseServer({ port: WS_PORT, identify, connPerUser: 3 })
 
-  const clientA = create_client()
-  const clientB = create_client()
-  const clientC = create_client()
+  const clientA = new WseClient({ url: WS_URL })
+  const clientB = new WseClient({ url: WS_URL })
+  const clientC = new WseClient({ url: WS_URL })
 
   let received = { A: 0, B: 0, C: 0 }
 
@@ -35,9 +37,9 @@ execute('x-cpu messages', async (success, fail) => {
     check_messages()
   })
 
-  await clientA.connect(VALID_SECRET, { user_id: 'UID1' })
-  await clientB.connect(VALID_SECRET, { user_id: 'UID1' })
-  await clientC.connect(VALID_SECRET, { user_id: 'UID1' })
+  await clientA.connect(SECRET, { user_id: 'UID1' })
+  await clientB.connect(SECRET, { user_id: 'UID1' })
+  await clientC.connect(SECRET, { user_id: 'UID1' })
 
   setTimeout(() => server.send('UID1', 'msg', { hey: 'there' }), 100)
 })
