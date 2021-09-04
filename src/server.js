@@ -38,7 +38,7 @@ export class WseServer {
    * @callback WseServer.CraGenerator
    * @param {*} identity identity, presented by user
    * @param {Object} params.meta optional data from the client
-   * @param {Function} params.quest function that accepts quest payload. will be send to the user.
+   * @param {Function} params.quest function that accepts quest payload for user.
    */
 
   /**
