@@ -33,7 +33,7 @@ export class WseServer {
    */
 
   /**
-   * Generate CRA-auth challenge
+   * Generate CRA-auth challenge.
    *
    * @callback WseServer.CraGenerator
    * @param {*} identity identity, presented by user
@@ -234,11 +234,20 @@ export class WseServer {
     client.send(stamp, result, conn[_id])
   }
 
+  /**
+   * Register remote procedure. Value, returned from the handler will be sent to requester.
+   * @param {String} rp
+   * @param {Function} handler
+   */
   register (rp, handler) {
     if (this._rps.has(rp)) throw new WseError(WSE_SERVER_ERR.RP_ALREADY_REGISTERED, { rp })
     this._rps.set(rp, handler)
   }
 
+  /**
+   * Unregister existing RP.
+   * @param {String} rp
+   */
   unregister (rp) {
     if (!this._rps.has(rp)) throw new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, { rp })
     this._rps.delete(rp)
@@ -314,12 +323,22 @@ export class WseServer {
     }
   }
 
+  /**
+   * Send message for everyone
+   * @param type
+   * @param payload
+   */
   broadcast (type, payload) {
     this.clients.forEach((client) => {
       client.send(type, payload)
     })
   }
 
+  /**
+   * Drop client with specific ID.
+   * @param {String} id client ID
+   * @param {String} [reason] WSE_REASON
+   */
   dropClient (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
 
@@ -331,6 +350,13 @@ export class WseServer {
     this.clients.delete(client.id)
   }
 
+  /**
+   * Send message to the client by Id.
+   * @param {String} client_id Client ID
+   * @param {String} type message type
+   * @param {*} [payload] optional payload
+   * @param {String} [conn_id] specific connection identifier (omit to send for all client's connections)
+   */
   send (client_id, type, payload, conn_id) {
     const client = this.clients.get(client_id)
     if (client) client.send(type, payload, conn_id)
