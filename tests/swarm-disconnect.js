@@ -11,7 +11,6 @@ execute('swarm disconnect', async (success, fail) => {
   const clients = create_clients_swarm(total_clients)
 
   server.when.joined(c => {
-    server.log('joined', c.id)
     process.nextTick(() => {
       c.drop('BECAUSE-OF-TEST')
     })

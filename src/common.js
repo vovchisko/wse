@@ -1,5 +1,3 @@
-export const SIG_CALL = '~call'
-
 export const WSE_REASON = Object.freeze({
   CLIENTS_CONCURRENCY: 'wse.clients-concurrency',
   NOT_AUTHORIZED: 'wse.not-authorized',

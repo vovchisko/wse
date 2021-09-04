@@ -11,7 +11,6 @@ execute('swarm connect', async (success, fail) => {
   const clients = create_clients_swarm(total_clients)
 
   server.when.joined(c => {
-    server.log('joined', c.id)
     points++
     if (points === total_clients) {
       success(`all ${ points } users connected`)

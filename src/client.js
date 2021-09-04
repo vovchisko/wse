@@ -1,15 +1,16 @@
-import { WseJSON }                                                           from './protocol.js'
-import EE                                                                    from 'eventemitter3'
-import Sig                                                                   from 'a-signal'
-import WS                                                                    from 'isomorphic-ws'
-import { make_stamp, SIG_CALL, WSE_CLIENT_ERRORS, WSE_SERVER_ERR, WseError } from './common.js'
+import { WseJSON }                                                             from './protocol.js'
+import EE                                                                      from 'eventemitter3'
+import Sig                                                                     from 'a-signal'
+import WS                                                                      from 'isomorphic-ws'
+import { make_stamp, WSE_CLIENT_ERRORS, WSE_REASON, WSE_SERVER_ERR, WseError } from './common.js'
 
 export class WseClient {
-  constructor ({ url, protocol = WseJSON, ...ws_options }) {
+  constructor ({ url, tO = 20, protocol = WseJSON, ...ws_options }) {
     this.protocol = new protocol()
     this.url = url
     this.ws_options = ws_options
     this.reused = 0
+    this.timeout = tO
 
     this.channel = new EE()
 
@@ -27,7 +28,6 @@ export class WseClient {
       closed: this.closed.subscriber(),
     }
 
-    this.logger = null
     this.challenge_solver = null
 
     this._ws = null
@@ -46,10 +46,8 @@ export class WseClient {
         let m = this.protocol.unpack(message.data)
 
         if (m.c === this.protocol.challenge) {
-          this.log('I challenged with', m)
           if (typeof this.challenge_solver === 'function') {
             this.challenge_solver(m.dat, (solution) => {
-              this.log('solved', solution)
               this.send(this.protocol.challenge, solution)
             })
             return
@@ -86,21 +84,26 @@ export class WseClient {
   send (c, dat) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack({ c, dat }))
-      this.log('send', c, dat)
     } else {
       this.error.emit('error', new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED))
     }
   }
 
-  close (code = 1000, reason = 'BY_CLIENT') {
-    this.log('closed', code, String(reason))
-    if (this._ws) this._ws.close(code, String(reason))
+  close (reason = WSE_REASON.BY_CLIENT) {
+    if (this._ws) this._ws.close(1000, String(reason))
   }
 
-  async call (c, dat, tO = 20000) {
+  /**
+   * Send RP request to the server.
+   * @param c - name of RP
+   * @param [dat] - payload
+   * @param [tO] - timeout
+   * @returns {Promise<*>}
+   */
+  async call (c, dat, tO = this.timeout) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       return new Promise((resolve, reject) => {
-        const stamp = [ SIG_CALL, c, make_stamp() ].join(':')
+        const stamp = [ '~call', c, make_stamp() ].join(':')
 
         const handler = (dat) => {
           if (dat.result) {
@@ -117,13 +120,15 @@ export class WseClient {
 
         this.channel.once(stamp, handler)
 
-        setTimeout(() => {
-          this.channel.off(stamp, handler)
-          reject(new WseError(WSE_CLIENT_ERRORS.RP_TIMEOUT))
-        }, tO)
+        if (tO > 0) {
+          setTimeout(() => {
+            this.channel.off(stamp, handler)
+            reject(new WseError(WSE_CLIENT_ERRORS.RP_TIMEOUT))
+          }, tO * 1000)
+        }
 
+        // todo: should we pass tO to the server?
         this._ws.send(this.protocol.pack({ c, dat, stamp }))
-        this.log(stamp, dat)
       })
     } else {
       const err = new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED)
@@ -131,8 +136,4 @@ export class WseClient {
       throw err
     }
   }
-
-  log () {
-    if (this.logger) this.logger(arguments)
-  };
 }

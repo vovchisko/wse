@@ -19,9 +19,6 @@ execute('cra-challenge connect and ready', async (success, fail) => {
   const server = new WseServer({ port: WS_TEST_PORT, identify, ...options })
   const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }`, ...options })
 
-  if (!process.send) client.logger = (args) => console.log('CLIENT::', ...args)
-  if (!process.send) server.logger = (args) => console.log('SERVER::', ...args)
-
   server.useChallenge((payload, meta, challenge) => {
     challenge({ a: 1, b: 2 })
   })

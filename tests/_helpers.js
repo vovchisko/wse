@@ -25,13 +25,7 @@ export function identify ({ payload, resolve, meta }) {
  * @returns {WseServer}
  */
 export function create_server (options = {}) {
-  const server = new WseServer({ port: WS_TEST_PORT, identify, ...options })
-
-  if (!process.send) {
-    server.logger = (args) => console.log('SERVER::', ...args)
-  }
-
-  return server
+  return new WseServer({ port: WS_TEST_PORT, identify, ...options })
 }
 
 /**
@@ -39,13 +33,7 @@ export function create_server (options = {}) {
  * @returns {WseClient}
  */
 export function create_client (options = {}) {
-  const client = new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }`, ...options })
-
-  if (!process.send) {
-    client.logger = (args) => console.log('CLIENT::', ...args)
-  }
-
-  return client
+  return new WseClient({ url: `ws://localhost:${ WS_TEST_PORT }`, ...options })
 }
 
 /**
