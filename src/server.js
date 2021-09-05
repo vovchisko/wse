@@ -154,8 +154,10 @@ export class WseServer {
               return this._handle_stranger_message(conn, type, payload)
           }
         } catch (err) {
-          if (!err.identity) err.identity = {}
-          err.identity.caused_by = conn[_client_id] ? `${ conn[_client_id] }#${ conn[_id] }` : 'stranger'
+          const error = err.type !== 'wse-error'
+              ? new WseError(WSE_SERVER_ERR.MESSAGE_PROCESSING_ERROR, { raw: err })
+              : err
+          error.message_from = conn[_client_id] ? `${ conn[_client_id] }#${ conn[_id] }` : 'stranger'
           this.error.emit(err, conn)
           if (conn[_client_id] && this.clients.has(conn[_client_id])) {
             this.clients.get(conn[_client_id])._conn_drop(conn[_id], WSE_REASON.PROTOCOL_ERR)
@@ -175,7 +177,7 @@ export class WseServer {
         }
       })
 
-      conn.onerror = (e) => this.error.emit(conn, e)
+      conn.onerror = (e) => this.error.emit(new WseError(WSE_SERVER_ERR.CONNECTION_ERROR, { raw: e }), conn)
     })
   }
 
@@ -214,22 +216,44 @@ export class WseServer {
     this.channel.emit(type, client, payload, conn[_id]) || this.ignored.emit(client, type, payload, conn[_id])
   }
 
-  async _handle_valid_call (conn, type, payload, stamp) {
+  _handle_valid_call (conn, type, payload, stamp) {
     const client = this.clients.get(conn[_client_id])
-    let result = {}
+    const reply = {}
+    
     if (this._rps.has(type)) {
       const rp = this._rps.get(type)
-      try {
-        result.result = await rp(client, payload, conn[_id])
-      } catch (e) {
-        result.error = { code: WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP }
-        this.error.emit(new WseError(WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP, { type, payload, stamp }), conn)
+
+      const rp_wrap = async () => {
+        reply.result = await rp(client, payload, conn[_id])
+        client.send(stamp, reply, conn[_id])
       }
+
+      rp_wrap().catch(err => {
+        reply.error = { code: WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP }
+        client.send(stamp, reply, conn[_id])
+
+        this.error.emit(new WseError(WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP, {
+          type,
+          payload,
+          stamp,
+          client_id: client.id,
+          conn_id: conn[_id],
+          raw: err,
+        }), conn)
+      })
+
     } else {
-      this.error.emit(new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, { type, payload, stamp }), conn)
-      result.error = { code: WSE_SERVER_ERR.RP_NOT_REGISTERED }
+      reply.error = { code: WSE_SERVER_ERR.RP_NOT_REGISTERED }
+      client.send(stamp, reply, conn[_id])
+
+      this.error.emit(new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, {
+        type,
+        payload,
+        stamp,
+        client_id: client.id,
+        conn_id: conn[_id],
+      }), conn)
     }
-    client.send(stamp, result, conn[_id])
   }
 
   /**

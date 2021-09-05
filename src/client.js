@@ -59,7 +59,7 @@ export class WseClient {
         }
         this._ws.onmessage = (message) => { this._process_msg(message) }
       }
-      this._ws.onerror = (e) => this.error.emit(e)
+      this._ws.onerror = (err) => this.error.emit(new WseError(WSE_CLIENT_ERRORS.WS_ERROR, { raw: err }))
       this._ws.onclose = (event) => {
         reject(String(event.reason))
         this.closed.emit(event.code, String(event.reason))
@@ -84,7 +84,7 @@ export class WseClient {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack({ type, payload }))
     } else {
-      this.error.emit('error', new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED))
+      this.error.emit(new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED))
     }
   }
 
@@ -108,7 +108,7 @@ export class WseClient {
           if (payload.result) {
             resolve(payload.result)
           } else {
-            let err_code = WSE_CLIENT_ERRORS.RP_UNKNOWN_ERROR
+            let err_code = WSE_CLIENT_ERRORS.RP_RESPONSE_ERR
             if (payload.error && payload.error.code) {
               if (payload.error.code === WSE_SERVER_ERR.RP_NOT_REGISTERED) err_code = WSE_CLIENT_ERRORS.RP_NOT_EXISTS
               if (payload.error.code === WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP) err_code = WSE_CLIENT_ERRORS.RP_FAILED
@@ -131,7 +131,7 @@ export class WseClient {
       })
     } else {
       const err = new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED)
-      this.error.emit('error', err)
+      this.error.emit(err)
       throw err
     }
   }

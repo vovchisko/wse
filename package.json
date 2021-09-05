@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/vovchisko/wse#readme",
   "dependencies": {
-    "a-signal": "^2.1.0",
+    "a-signal": "^2.1.1",
     "eventemitter3": "^4.0.7",
     "isomorphic-ws": "^4.0.1",
     "ws": "^8.2.1"

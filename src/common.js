@@ -12,7 +12,8 @@ export const WSE_CLIENT_ERRORS = Object.freeze({
   RP_TIMEOUT: 'wse.client.rp-timeout',
   RP_NOT_EXISTS: 'wse.client.rp-not-exists',
   RP_FAILED: 'wse.client.rp-failed',
-  RP_UNKNOWN_ERROR: 'wse.client.unknown-error',
+  RP_RESPONSE_ERR: 'wse.client.rp-response-error',
+  WS_ERROR: 'wse.client.ws-error',
 })
 
 export const WSE_SERVER_ERR = Object.freeze({
@@ -23,6 +24,8 @@ export const WSE_SERVER_ERR = Object.freeze({
   RP_NOT_REGISTERED: 'wse-server.rp.not-registered',
   RP_ALREADY_REGISTERED: 'wse-server.rp.already-registered',
   PROTOCOL_VIOLATION: 'wse-server.protocol-violation',
+  CONNECTION_ERROR: 'wse-server.connection-error',
+  MESSAGE_PROCESSING_ERROR: 'wse-server.msg-processing-error',
 })
 
 
@@ -38,10 +41,10 @@ export function make_stamp (len = 10) {
 }
 
 export class WseError extends Error {
-  constructor (code, identity = {}) {
+  constructor (code, details = {}) {
     super(code)
     this.type = 'wse-error'
     this.code = code
-    this.identity = identity
+    this.details = details
   }
 }
