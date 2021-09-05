@@ -1,6 +1,6 @@
-import EE        from 'eventemitter3'
-import WebSocket from 'ws'
-import Sig       from 'a-signal'
+import EE                             from 'eventemitter3'
+import { WebSocket, WebSocketServer } from 'ws'
+import Sig                            from 'a-signal'
 
 import { WseJSON }                                          from './protocol.js'
 import { make_stamp, WSE_REASON, WSE_SERVER_ERR, WseError } from './common.js'
@@ -53,7 +53,6 @@ export class WseServer {
    * and classic ws params...
    * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
    * @param {Boolean} [options.clientTracking=true] Specifies whether or not to track clients
-   * @param {Function} [options.handleProtocols] A hook to handle protocols
    * @param {String} [options.host] The hostname where to bind the server
    * @param {Number} [options.maxPayload=104857600] The maximum allowed message size
    * @param {Boolean} [options.noServer=false] Enable no server mode
@@ -115,7 +114,6 @@ export class WseServer {
    *
    * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
    * @param {Boolean} [options.clientTracking=true] Specifies whether or not to track clients
-   * @param {Function} [options.handleProtocols] A hook to handle protocols
    * @param {String} [options.host] The hostname where to bind the server
    * @param {Number} [options.maxPayload=104857600] The maximum allowed message size
    * @param {Boolean} [options.noServer=false] Enable no server mode
@@ -129,7 +127,7 @@ export class WseServer {
   init (options) {
     Object.assign(this.options, options)
 
-    this.ws = new WebSocket.Server(this.options)
+    this.ws = new WebSocketServer({ ...this.options, handleProtocols: (a) => this.protocol.name })
     this.ws.on('connection', (conn, req) => {
       this._handle_connection(conn, req)
 
