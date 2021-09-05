@@ -16,8 +16,8 @@ function identify ({ identity, resolve, meta, challenge }) {
 
 execute('x-cpu with cra', async (success, fail) => {
   const goals = {
-    c2disconnect: false,
-    c1connect: false,
+    c2disconnect: null,
+    c1connect: null,
   }
 
   const checkGoals = () => {

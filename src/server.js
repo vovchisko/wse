@@ -76,7 +76,7 @@ export class WseServer {
     this.clients = new Map()
     this.protocol = new protocol()
     this.options = {}
-    this.server = null
+    this.ws = null
     this.identify = identify
     this.connPerUser = connPerUser
 
@@ -129,8 +129,8 @@ export class WseServer {
   init (options) {
     Object.assign(this.options, options)
 
-    this.server = new WebSocket.Server(this.options)
-    this.server.on('connection', (conn, req) => {
+    this.ws = new WebSocket.Server(this.options)
+    this.ws.on('connection', (conn, req) => {
       this._handle_connection(conn, req)
 
       conn.on('message', (message) => {

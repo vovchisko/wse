@@ -28,5 +28,6 @@ import { runner } from 'test-a-bit'
     { script: './tests/server2client-ignored.js' },
     { script: './tests/swarm-connect.js' },
     { script: './tests/swarm-disconnect.js' },
+    { script: './tests/multiple-servers' },
   ])
 })()
