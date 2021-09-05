@@ -39,21 +39,21 @@ export class WseClient {
       this._ws = new WS(this.url, this.protocol.name, this.ws_options)
 
       this._ws.onopen = () => {
-        this.send(this.protocol.hi, { identity, meta })
+        this.send(this.protocol.internal_types.hi, { identity, meta })
         this.connected.emit(identity, meta)
       }
       this._ws.onmessage = (message) => {
         let [ type, payload ] = this.protocol.unpack(message.data)
 
-        if (type === this.protocol.challenge) {
+        if (type === this.protocol.internal_types.challenge) {
           if (typeof this.challenge_solver === 'function') {
             this.challenge_solver(payload, (solution) => {
-              this.send(this.protocol.challenge, solution)
+              this.send(this.protocol.internal_types.challenge, solution)
             })
             return
           }
         }
-        if (type === this.protocol.welcome) {
+        if (type === this.protocol.internal_types.welcome) {
           this.ready.emit(payload)
           resolve(payload)
         }
@@ -95,16 +95,15 @@ export class WseClient {
   /**
    * Send RP request to the server.
    * @param rp - name of RP
-   * @param [data] - identity
+   * @param [payload] - payload
    * @param [tO] - timeout
    * @returns {Promise<*>}
    */
-  async call (rp, data, tO = this.timeout) {
+  async call (rp, payload, tO = this.timeout) {
     if (!rp || typeof rp !== 'string') throw new Error('rp_name not a string')
     if (this._ws && this._ws.readyState === WS.OPEN) {
       return new Promise((resolve, reject) => {
-        const stamp = [ '~call', rp, make_stamp() ].join(':')
-
+        const stamp = [ this.protocol.internal_types.call, rp, make_stamp() ].join(':')
         const handler = (payload) => {
           if (payload.result) {
             resolve(payload.result)
@@ -128,7 +127,7 @@ export class WseClient {
         }
 
         // todo: should we pass tO to the server?
-        this._ws.send(this.protocol.pack({ type: rp, payload: data, stamp }))
+        this._ws.send(this.protocol.pack({ type: rp, payload, stamp }))
       })
     } else {
       const err = new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED)

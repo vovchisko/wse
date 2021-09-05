@@ -1,9 +1,12 @@
 export class WseJSON {
   constructor () {
     this.name = 'wse-default-json'
-    this.hi = 'hi'
-    this.challenge = 'challenge'
-    this.welcome = 'welcome'
+    this.internal_types = Object.freeze({
+      hi: '~wse:hi',
+      challenge: '~wse:challenge',
+      welcome: '~wse:welcome',
+      call: '~wse:call',
+    })
   }
 
   pack ({ type, payload = undefined, stamp = undefined }) {

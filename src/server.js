@@ -65,7 +65,7 @@ export class WseServer {
    * @param {Function} [options.verifyClient] A hook to reject connections
    */
   constructor ({
-    protocol = WseJSON,
+    protocol,
     identify,
     connPerUser = 1,
     skipInit = false,
@@ -74,7 +74,7 @@ export class WseServer {
     if (!identify) throw new WseError(WSE_SERVER_ERR.IDENTIFY_HANDLER_MISSING)
 
     this.clients = new Map()
-    this.protocol = new protocol()
+    this.protocol = protocol ? new protocol() : new WseJSON()
     this.options = {}
     this.ws = null
     this.identify = identify
@@ -255,7 +255,7 @@ export class WseServer {
 
   _handle_stranger_message (conn, type, payload) {
     if (conn[_valid_stat] === CLIENT_STRANGER) {
-      if (type === this.protocol.hi) {
+      if (type === this.protocol.internal_types.hi) {
         conn[_valid_stat] = CLIENT_VALIDATING
         conn[_identity] = payload.identity
 
@@ -264,7 +264,7 @@ export class WseServer {
         if (typeof this.cra_generator === 'function') {
           this.cra_generator(conn[_identity], conn[_meta], (quest) => {
             conn[_challenge_quest] = quest
-            conn.send(this.protocol.pack({ type: 'challenge', payload: quest }))
+            conn.send(this.protocol.pack({ type: this.protocol.internal_types.challenge, payload: quest }))
             conn[_valid_stat] = CLIENT_CHALLENGED
           })
           return
@@ -276,7 +276,7 @@ export class WseServer {
     }
 
     if (conn[_valid_stat] === CLIENT_CHALLENGED) {
-      if (type === this.protocol.challenge) {
+      if (type === this.protocol.internal_types.challenge) {
         conn[_challenge_response] = payload
       } else {
         conn.close(1000, WSE_REASON.PROTOCOL_ERR)
@@ -312,12 +312,12 @@ export class WseServer {
 
     if (client) {
       client._conn_add(conn)
-      client.send(this.protocol.welcome, welcome_payload, conn[_id])
+      client.send(this.protocol.internal_types.welcome, welcome_payload, conn[_id])
       this.connected.emit(conn)
     } else {
       const client = new WseClient(this, conn)
       this.clients.set(client.id, client)
-      client.send(this.protocol.welcome, welcome_payload)
+      client.send(this.protocol.internal_types.welcome, welcome_payload)
       this.connected.emit(conn)
       this.joined.emit(client, payload.meta || {})
     }

@@ -4,7 +4,7 @@ import { SECRET, WS_PORT, WS_URL } from './_helpers.js'
 import { WseServer }               from '../src/server.js'
 import { WseClient }               from '../src/client.js'
 
-execute('cra-challenge connect and ready', async (success, fail) => {
+execute('cra-challenge fail', async (success, fail) => {
 
   function identifyWithCra ({ identity, resolve, meta, challenge }) {
     if (identity === SECRET && challenge.response === 42) {
