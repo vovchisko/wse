@@ -37,9 +37,10 @@ execute('x-cpu messages', async (success, fail) => {
     check_messages()
   })
 
+
   await clientA.connect(SECRET, { user_id: 'UID1' })
   await clientB.connect(SECRET, { user_id: 'UID1' })
   await clientC.connect(SECRET, { user_id: 'UID1' })
 
-  setTimeout(() => server.send('UID1', 'msg', { hey: 'there' }), 100)
+  setTimeout(() => server.send('UID1', 'msg', { hey: 'there' }), 200)
 })

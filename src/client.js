@@ -43,8 +43,9 @@ export class WseClient {
         this.connected.emit(identity, meta)
       }
       this._ws.onmessage = (message) => {
-        let [ type, payload ] = this.protocol.unpack(message.data)
 
+
+        let [ type, payload ] = this.protocol.unpack(message.data)
         if (type === this.protocol.internal_types.challenge) {
           if (typeof this.challenge_solver === 'function') {
             this.challenge_solver(payload, (solution) => {
@@ -57,7 +58,9 @@ export class WseClient {
           this.ready.emit(payload)
           resolve(payload)
         }
-        this._ws.onmessage = (message) => { this._process_msg(message) }
+        this._ws.onmessage = (message) => {
+          this._process_msg(message)
+        }
       }
       this._ws.onerror = (err) => this.error.emit(new WseError(WSE_CLIENT_ERRORS.WS_ERROR, { raw: err }))
       this._ws.onclose = (event) => {
@@ -77,6 +80,7 @@ export class WseClient {
 
   _process_msg (message) {
     let [ type, payload ] = this.protocol.unpack(message.data)
+
     return this.channel.emit(type, payload) || this.ignored.emit(type, payload)
   }
 
