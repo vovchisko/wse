@@ -21,9 +21,8 @@ class WseConnection {
     this.meta = {}
     this.challenge_quest = null
     this.challenge_response = null
-    this.client_id = ''
     this.valid_stat = CLIENT_STRANGER
-    this.cid = make_stamp(15)
+    this.conn_id = make_stamp(15)
 
     this.remote_addr = ''
 
@@ -37,16 +36,24 @@ class WseConnection {
    */
   _identify_as (client) {
     this.client = client
-    this.client_id = client.id
     this.valid_stat = CLIENT_VALID
   }
 
-  send (type, payload, stamp) {
-    this.ws_conn.send(this.server.protocol.pack({ type, payload, stamp }))
+  /**
+   * Send message over this connection.
+   * @param {String} type
+   * @param {*} payload
+   */
+  send (type, payload) {
+    this.ws_conn.send(this.server.protocol.pack({ type, payload }))
   }
 
   get readyState () {
     return this.ws_conn.readyState
+  }
+
+  get cid (){
+    return this.client ? this.client.cid || null : null
   }
 }
 
@@ -192,10 +199,10 @@ export class WseServer {
           const error = err.type !== 'wse-error'
               ? new WseError(WSE_SERVER_ERR.MESSAGE_PROCESSING_ERROR, { raw: err })
               : err
-          error.message_from = conn.client_id ? `${ conn.client_id }#${ conn.cid }` : 'stranger'
+          error.message_from = conn.cid ? `${ conn.cid }#${ conn.conn_id }` : 'stranger'
           this.error.emit(err, conn)
-          if (conn.client_id && this.clients.has(conn.client_id)) {
-            this.clients.get(conn.client_id)._conn_drop(conn.cid, WSE_REASON.PROTOCOL_ERR)
+          if (conn.cid && this.clients.has(conn.cid)) {
+            this.clients.get(conn.cid)._conn_drop(conn.conn_id, WSE_REASON.PROTOCOL_ERR)
           } else {
             conn.ws_conn.removeAllListeners()
             conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
@@ -204,9 +211,9 @@ export class WseServer {
       })
 
       conn.ws_conn.on('close', (code, reason) => {
-        if (conn.client_id && this.clients.has(conn.client_id)) {
-          const client = this.clients.get(conn.client_id)
-          client._conn_drop(conn.cid)
+        if (conn.cid && this.clients.has(conn.cid)) {
+          const client = this.clients.get(conn.cid)
+          client._conn_drop(conn.conn_id)
         } else {
           this.disconnected.emit(conn, code, reason)
         }
@@ -253,15 +260,15 @@ export class WseServer {
       }
 
       rp_wrap().catch(err => {
-        reply.error = { code: WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP }
+        reply.error = { code: WSE_SERVER_ERR.RP_EXECUTION_FAILED }
         conn.send(stamp, reply)
 
-        this.error.emit(new WseError(WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP, {
+        this.error.emit(new WseError(WSE_SERVER_ERR.RP_EXECUTION_FAILED, {
           type,
           payload,
           stamp,
-          client_id: conn.id,
           cid: conn.cid,
+          conn_id: conn.conn_id,
           raw: err,
         }), conn)
       })
@@ -274,8 +281,8 @@ export class WseServer {
         type,
         payload,
         stamp,
-        client_id: conn.client_id,
         cid: conn.cid,
+        conn_id: conn.conn_id,
       }), conn)
     }
   }
@@ -329,8 +336,8 @@ export class WseServer {
       }
     }
 
-    const resolve = (client_id, welcome_payload) => {
-      this._identify_connection(conn, client_id, welcome_payload, payload)
+    const resolve = (cid, welcome_payload) => {
+      this._identify_connection(conn, cid, welcome_payload, payload)
     }
 
     this.identify({
@@ -340,28 +347,28 @@ export class WseServer {
       challenge: typeof this.cra_generator === 'function'
           ? { quest: conn.challenge_quest, response: conn.challenge_response }
           : null,
-      id: conn.cid,
+      id: conn.conn_id,
     })
   }
 
-  _identify_connection (conn, client_id, welcome_payload, payload) {
-    if (!client_id) {
+  _identify_connection (conn, cid, welcome_payload, payload) {
+    if (!cid) {
       conn.ws_conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
       return
     }
 
     let wasNewIdentity = false
 
-    let client = this.clients.get(client_id)
+    let client = this.clients.get(cid)
 
     if (!client) {
       wasNewIdentity = true
       client = new WseIdentity({
         identity: conn.identity,
         meta: conn.meta,
-        id: client_id,
+        cid,
       }, this)
-      this.clients.set(client_id, client)
+      this.clients.set(cid, client)
     }
 
     client._conn_add(conn)
@@ -397,17 +404,17 @@ export class WseServer {
     if (client.conns.size) client.drop()
     this.left.emit(client, 1000, reason)
 
-    this.clients.delete(client.id)
+    this.clients.delete(client.cid)
   }
 
   /**
    * Send message to the client by Id.
-   * @param {String} client_id Client ID
+   * @param {String} cid Client ID
    * @param {String} type message type
    * @param {*} [payload] optional payload
    */
-  send (client_id, type, payload) {
-    const client = this.clients.get(client_id)
+  send (cid, type, payload) {
+    const client = this.clients.get(cid)
     if (client) {
       client.send(type, payload)
     }
@@ -416,13 +423,13 @@ export class WseServer {
 
 class WseIdentity {
   /**
-   * @param {string} id - client id
+   * @param {string} cid - client id
    * @param {*} identity - identity payload
    * @param {WseServer} server - wsm instance
    * @param {object} meta - object with user-defined data
    */
-  constructor ({ id, identity, meta = {} }, server) {
-    this.id = id
+  constructor ({ cid, identity, meta = {} }, server) {
+    this.cid = cid
     this.conns = new Map()
     this.meta = meta
     this.identity = identity
@@ -433,7 +440,7 @@ class WseIdentity {
   _conn_add (conn) {
     conn._identify_as(this)
 
-    this.conns.set(conn.cid, conn)
+    this.conns.set(conn.conn_id, conn)
     if (this.server.connPerUser < this.conns.size) {
       const key_to_delete = this.conns[Symbol.iterator]().next().value[0]
       this._conn_drop(key_to_delete, WSE_REASON.CLIENTS_CONCURRENCY)
@@ -457,7 +464,7 @@ class WseIdentity {
     this.server.disconnected.emit(conn, 1000, reason)
 
     if (this.conns.size === 0) {
-      this.server.dropClient(this.id, reason)
+      this.server.dropClient(this.cid, reason)
     }
   }
 

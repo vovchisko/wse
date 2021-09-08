@@ -24,8 +24,8 @@ import { WseServer } from 'wse'
 // auth handler
 function identify ({ payload, resolve, meta }) {
   if (payload === SECRET) {
-    const user_id = 'any user id here'
-    resolve(user_id, { hey: 'welcome back!' })
+    const cid = 'any user id here'
+    resolve(cid, { hey: 'welcome back!' })
   } else {
     resolve(false)
   }
@@ -36,7 +36,7 @@ const server = new WseServer({ port: 4200, identify })
 server.broadcast('broad-message', { paylog: 'hey there!' })
 
 server.channel.on('test-message', (conn, dat) => {
-  console.log('we got test-message from', conn.client.id, dat)
+  console.log('we got test-message from', conn.cid, dat)
 
   conn.send('welcome-here', { payload: 42 })
 })

@@ -25,8 +25,8 @@ execute('personal and all-connections', async (success, fail) => {
   client2.channel.on('both', () => { count('both') })
 
   server.channel.on('hey', (conn) => {
-    conn.client.send('both', conn.client.id)
-    conn.send('only', conn.client.id)
+    conn.client.send('both')
+    conn.send('only')
   })
 
   await client1.connect(SECRET, { user_id: 1 })

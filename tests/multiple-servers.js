@@ -54,7 +54,7 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
 
 
   server1.when.joined((conn, meta) => {
-    if (meta.user_id === 1 && conn.id === 1) {
+    if (meta.user_id === 1 && conn.cid === 1) {
       markGoal('c1_connect')
     } else {
       fail('invalid meta on join')
@@ -62,7 +62,7 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
   })
 
   server2.when.joined((conn, meta) => {
-    if (meta.user_id === 2 && conn.id === 2) {
+    if (meta.user_id === 2 && conn.cid === 2) {
       markGoal('c2_connect')
     } else {
       fail('invalid meta on join')
@@ -70,7 +70,7 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
   })
 
   server1.channel.on('talk', (conn, payload) => {
-    if (conn.client_id === 1 && payload === 10) {
+    if (conn.cid === 1 && payload === 10) {
       markGoal('talk1')
     } else {
       fail('got wrong message on server1')
@@ -78,7 +78,7 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
   })
 
   server2.channel.on('talk', (conn, payload) => {
-    if (conn.client_id === 2 && payload === 20) {
+    if (conn.cid === 2 && payload === 20) {
       markGoal('talk2')
     } else {
       fail('got wrong message on server2')
@@ -86,7 +86,6 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
   })
 
   http.listen(WS_PORT)
-
 
   await client1.connect(SECRET, { user_id: 1 })
   client1.send('talk', 10)
