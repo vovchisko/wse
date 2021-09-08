@@ -12,7 +12,7 @@ execute('external httpServer', async (success, fail) => {
   const server = new WseServer({ identify, skipInit: true })
   const client = new WseClient({ url: WS_URL })
 
-  server.channel.on('test-message', (client, payload) => {
+  server.channel.on('test-message', (conn, payload) => {
     payload.value === 42
         ? success('client sent message')
         : fail('invalid data from client')

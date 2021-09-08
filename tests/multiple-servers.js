@@ -53,32 +53,32 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
   })
 
 
-  server1.when.joined((c, meta) => {
-    if (meta.user_id === 1 && c.id === 1) {
+  server1.when.joined((conn, meta) => {
+    if (meta.user_id === 1 && conn.id === 1) {
       markGoal('c1_connect')
     } else {
       fail('invalid meta on join')
     }
   })
 
-  server2.when.joined((c, meta) => {
-    if (meta.user_id === 2 && c.id === 2) {
+  server2.when.joined((conn, meta) => {
+    if (meta.user_id === 2 && conn.id === 2) {
       markGoal('c2_connect')
     } else {
       fail('invalid meta on join')
     }
   })
 
-  server1.channel.on('talk', (c, payload) => {
-    if (c.client_id === 1 && payload === 10) {
+  server1.channel.on('talk', (conn, payload) => {
+    if (conn.client_id === 1 && payload === 10) {
       markGoal('talk1')
     } else {
       fail('got wrong message on server1')
     }
   })
 
-  server2.channel.on('talk', (c, payload) => {
-    if (c.client_id === 2 && payload === 20) {
+  server2.channel.on('talk', (conn, payload) => {
+    if (conn.client_id === 2 && payload === 20) {
       markGoal('talk2')
     } else {
       fail('got wrong message on server2')

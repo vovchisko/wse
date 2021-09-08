@@ -20,6 +20,8 @@ import { runner } from 'test-a-bit'
     { script: './tests/invalid-hi-drop.js' },
     { script: './tests/invalid-hi-err.js' },
     { script: './tests/meta.js' },
+    { script: './tests/multiple-servers.js' },
+    { script: './tests/personal-and-all.js' },
     { script: './tests/ready-event.js' },
     { script: './tests/rp-call.js' },
     { script: './tests/rp-not-registered.js' },
@@ -28,6 +30,5 @@ import { runner } from 'test-a-bit'
     { script: './tests/server2client-ignored.js' },
     { script: './tests/swarm-connect.js' },
     { script: './tests/swarm-disconnect.js' },
-    { script: './tests/multiple-servers' },
   ])
 })()

@@ -23,7 +23,7 @@ class WseConnection {
     this.challenge_response = null
     this.client_id = ''
     this.valid_stat = CLIENT_STRANGER
-    this.cid = ''
+    this.cid = make_stamp(15)
 
     this.remote_addr = ''
 
@@ -39,7 +39,6 @@ class WseConnection {
     this.client = client
     this.client_id = client.id
     this.valid_stat = CLIENT_VALID
-    this.cid = make_stamp(15)
   }
 
   send (type, payload, stamp) {
@@ -50,7 +49,6 @@ class WseConnection {
     return this.ws_conn.readyState
   }
 }
-
 
 export class WseServer {
   /**
@@ -370,12 +368,9 @@ export class WseServer {
 
     conn.send(this.protocol.internal_types.welcome, welcome_payload)
 
-    if (wasNewIdentity) {
-      this.joined.emit(client, payload.meta || {})
-      this.connected.emit(conn)
-    } else {
-      this.connected.emit(conn)
-    }
+    if (wasNewIdentity) this.joined.emit(client, payload.meta || {})
+
+    this.connected.emit(conn)
   }
 
   /**
@@ -410,12 +405,11 @@ export class WseServer {
    * @param {String} client_id Client ID
    * @param {String} type message type
    * @param {*} [payload] optional payload
-   * @param {String} [conn_id] specific connection identifier (omit to send for all client's connections)
    */
-  send (client_id, type, payload, conn_id) {
+  send (client_id, type, payload) {
     const client = this.clients.get(client_id)
     if (client) {
-      client.send(type, payload, conn_id)
+      client.send(type, payload)
     }
   }
 }
@@ -471,22 +465,14 @@ class WseIdentity {
    * Send a message to the client
    * @param {string} type - message type
    * @param {string|number|object} payload - identity
-   * @param {string} conn_id id of specific connection to send. omit to send on al the connections of this client
    * @returns {boolean} - true if connection was opened, false - if not.
    */
-  send (type, payload, conn_id = '') {
-    if (conn_id) {
-      const conn = this.conns.get(conn_id)
+  send (type, payload) {
+    this.conns.forEach(conn => {
       if (conn.readyState === WebSocket.OPEN) {
-        conn.send( type, payload )
+        conn.send(type, payload)
       }
-    } else {
-      this.conns.forEach(conn => {
-        if (conn.readyState === WebSocket.OPEN) {
-          conn.send( type, payload )
-        }
-      })
-    }
+    })
   }
 
   /**

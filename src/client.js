@@ -43,8 +43,6 @@ export class WseClient {
         this.connected.emit(identity, meta)
       }
       this._ws.onmessage = (message) => {
-
-
         let [ type, payload ] = this.protocol.unpack(message.data)
         if (type === this.protocol.internal_types.challenge) {
           if (typeof this.challenge_solver === 'function') {
@@ -80,7 +78,6 @@ export class WseClient {
 
   _process_msg (message) {
     let [ type, payload ] = this.protocol.unpack(message.data)
-
     return this.channel.emit(type, payload) || this.ignored.emit(type, payload)
   }
 

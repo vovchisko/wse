@@ -35,10 +35,10 @@ const server = new WseServer({ port: 4200, identify })
 
 server.broadcast('broad-message', { paylog: 'hey there!' })
 
-server.channel.on('test-message', (client, dat) => {
-  console.log('we got test-message from', client.id, dat)
+server.channel.on('test-message', (conn, dat) => {
+  console.log('we got test-message from', conn.client.id, dat)
 
-  client.send('welcome-here', { payload: 42 })
+  conn.send('welcome-here', { payload: 42 })
 })
 
 ```
