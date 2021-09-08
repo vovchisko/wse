@@ -9,23 +9,24 @@ export const WSE_REASON = Object.freeze({
 export const WSE_CLIENT_ERRORS = Object.freeze({
   CONNECTION_NOT_OPENED: 'wse.client.not-opened',
   INVALID_CRA_HANDLER: 'wse.client.invalid-cra-handler',
-  RP_TIMEOUT: 'wse.client.rp-timeout',
-  RP_NOT_EXISTS: 'wse.client.rp-not-exists',
-  RP_FAILED: 'wse.client.rp-failed',
-  RP_RESPONSE_ERR: 'wse.client.rp-response-error',
+  RP_TIMEOUT: 'wse.client.rp.timeout',
+  RP_NOT_EXISTS: 'wse.client.rp.not-exists',
+  RP_FAILED: 'wse.client.rp.failed',
+  RP_RESPONSE_ERR: 'wse.client.rp.response-error',
+  RP_DISCONNECT: 'wse.client.rp.disconnect',
   WS_ERROR: 'wse.client.ws-error',
 })
 
 export const WSE_SERVER_ERR = Object.freeze({
-  NO_CLIENT_CONNECTION: 'wse-server.client.connection-missing',
-  IDENTIFY_HANDLER_MISSING: 'wse-server.auth.identify-handler-missing',
-  INVALID_CRA_GENERATOR: 'wse-server.auth.invalid-cra-generator',
-  FAILED_TO_EXECUTE_RP: 'wse-server.rp.failed',
-  RP_NOT_REGISTERED: 'wse-server.rp.not-registered',
-  RP_ALREADY_REGISTERED: 'wse-server.rp.already-registered',
-  PROTOCOL_VIOLATION: 'wse-server.protocol-violation',
-  CONNECTION_ERROR: 'wse-server.connection-error',
-  MESSAGE_PROCESSING_ERROR: 'wse-server.msg-processing-error',
+  NO_CLIENT_CONNECTION: 'wse.server.client.connection-missing',
+  IDENTIFY_HANDLER_MISSING: 'wse.server.auth.identify-handler-missing',
+  INVALID_CRA_GENERATOR: 'wse.server.auth.invalid-cra-generator',
+  RP_EXECUTION_FAILED: 'wse.server.rp.failed',
+  RP_NOT_REGISTERED: 'wse.server.rp.not-registered',
+  RP_ALREADY_REGISTERED: 'wse.server.rp.already-registered',
+  PROTOCOL_VIOLATION: 'wse.server.protocol-violation',
+  CONNECTION_ERROR: 'wse.server.connection-error',
+  MESSAGE_PROCESSING_ERROR: 'wse.server.msg-processing-error',
 })
 
 

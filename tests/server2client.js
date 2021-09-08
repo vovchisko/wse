@@ -19,4 +19,5 @@ execute('server > client', async (success, fail) => {
   })
 
   await client.connect(SECRET, { client_meta: 1 })
+
 })

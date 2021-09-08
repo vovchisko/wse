@@ -10,7 +10,7 @@ export class WseClient {
     this.url = url
     this.ws_options = ws_options
     this.reused = 0
-    this.timeout = tO
+    this.tO = tO
 
     this.channel = new EE()
 
@@ -44,7 +44,6 @@ export class WseClient {
       }
       this._ws.onmessage = (message) => {
         let [ type, payload ] = this.protocol.unpack(message.data)
-
         if (type === this.protocol.internal_types.challenge) {
           if (typeof this.challenge_solver === 'function') {
             this.challenge_solver(payload, (solution) => {
@@ -57,12 +56,14 @@ export class WseClient {
           this.ready.emit(payload)
           resolve(payload)
         }
-        this._ws.onmessage = (message) => { this._process_msg(message) }
+        this._ws.onmessage = (message) => {
+          this._process_msg(message)
+        }
       }
       this._ws.onerror = (err) => this.error.emit(new WseError(WSE_CLIENT_ERRORS.WS_ERROR, { raw: err }))
       this._ws.onclose = (event) => {
-        reject(String(event.reason))
         this.closed.emit(event.code, String(event.reason))
+        reject(String(event.reason))
       }
     })
   }
@@ -96,34 +97,47 @@ export class WseClient {
    * Send RP request to the server.
    * @param rp - name of RP
    * @param [payload] - payload
-   * @param [tO] - timeout
    * @returns {Promise<*>}
    */
-  async call (rp, payload, tO = this.timeout) {
+  async call (rp, payload) {
     if (!rp || typeof rp !== 'string') throw new Error('rp_name not a string')
     if (this._ws && this._ws.readyState === WS.OPEN) {
       return new Promise((resolve, reject) => {
         const stamp = [ this.protocol.internal_types.call, rp, make_stamp() ].join(':')
+
+        let timeout
+
         const handler = (payload) => {
           if (payload.result) {
+            if (timeout) clearTimeout(timeout)
+            closedBind.off()
             resolve(payload.result)
           } else {
             let err_code = WSE_CLIENT_ERRORS.RP_RESPONSE_ERR
             if (payload.error && payload.error.code) {
               if (payload.error.code === WSE_SERVER_ERR.RP_NOT_REGISTERED) err_code = WSE_CLIENT_ERRORS.RP_NOT_EXISTS
-              if (payload.error.code === WSE_SERVER_ERR.FAILED_TO_EXECUTE_RP) err_code = WSE_CLIENT_ERRORS.RP_FAILED
+              if (payload.error.code === WSE_SERVER_ERR.RP_EXECUTION_FAILED) err_code = WSE_CLIENT_ERRORS.RP_FAILED
             }
-            return reject(new WseError(err_code))
+            return rejection(err_code, payload)
           }
         }
 
+        const rejection = (err_code, details) => {
+          if (timeout) clearTimeout(timeout)
+          this.channel.off(stamp, handler)
+          return reject(new WseError(err_code, details))
+        }
+
+        const closedBind = this.closed.once((code, reason) => {
+          rejection(WSE_CLIENT_ERRORS.RP_DISCONNECT, { code, reason })
+        })
+
         this.channel.once(stamp, handler)
 
-        if (tO > 0) {
-          setTimeout(() => {
-            this.channel.off(stamp, handler)
-            reject(new WseError(WSE_CLIENT_ERRORS.RP_TIMEOUT))
-          }, tO * 1000)
+        if (this.tO > 0) {
+          timeout = setTimeout(() => {
+            return rejection(WSE_CLIENT_ERRORS.RP_TIMEOUT)
+          }, this.tO * 1000)
         }
 
         // todo: should we pass tO to the server?

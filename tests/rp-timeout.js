@@ -7,7 +7,7 @@ import { WseClient }                               from '../src/client.js'
 
 execute('rp timeout', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
-  const client = new WseClient({ url: WS_URL })
+  const client = new WseClient({ url: WS_URL, tO: .1 })
 
   server.register('test-rp', async (client, payload) => {
     await wait(60000)
@@ -17,7 +17,7 @@ execute('rp timeout', async (success, fail) => {
   await client.connect(SECRET)
 
   try {
-    await client.call('test-rp', null, .1)
+    await client.call('test-rp', null)
     fail('still responds')
   } catch (e) {
     if (e.code === WSE_CLIENT_ERRORS.RP_TIMEOUT) {
