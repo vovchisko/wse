@@ -29,6 +29,7 @@ execute('x-cpu with cra', async (success, fail) => {
   const client2 = new WseClient({ url: WS_URL })
 
   server.useChallenge((identity, meta, quest) => quest({ a: 1, b: 2 }))
+
   client1.challenge((quest, solve) => solve(quest.a + quest.b))
   client2.challenge((quest, solve) => solve('clearly-wrong-value'))
 

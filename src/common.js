@@ -1,3 +1,6 @@
+/**
+ * @enum {WSE_REASON}
+ */
 export const WSE_REASON = Object.freeze({
   CLIENTS_CONCURRENCY: 'wse.clients-concurrency',
   NOT_AUTHORIZED: 'wse.not-authorized',
@@ -6,6 +9,9 @@ export const WSE_REASON = Object.freeze({
   BY_CLIENT: 'wse.by-client',
 })
 
+/**
+ * @enum {WSE_CLIENT_ERRORS}
+ */
 export const WSE_CLIENT_ERRORS = Object.freeze({
   CONNECTION_NOT_OPENED: 'wse.client.not-opened',
   INVALID_CRA_HANDLER: 'wse.client.invalid-cra-handler',
@@ -17,6 +23,9 @@ export const WSE_CLIENT_ERRORS = Object.freeze({
   WS_ERROR: 'wse.client.ws-error',
 })
 
+/**
+ * @enum {WSE_SERVER_ERR}
+ */
 export const WSE_SERVER_ERR = Object.freeze({
   NO_CLIENT_CONNECTION: 'wse.server.client.connection-missing',
   IDENTIFY_HANDLER_MISSING: 'wse.server.auth.identify-handler-missing',
@@ -29,7 +38,11 @@ export const WSE_SERVER_ERR = Object.freeze({
   MESSAGE_PROCESSING_ERROR: 'wse.server.msg-processing-error',
 })
 
-
+/**
+ * Create low-grade unique ID.
+ * @param {Number} [len]
+ * @returns {string}
+ */
 export function make_stamp (len = 10) {
   let result = ''
   let i = 0
@@ -42,6 +55,11 @@ export function make_stamp (len = 10) {
 }
 
 export class WseError extends Error {
+  /**
+   * WseError wrapper
+   * @param {String} code
+   * @param {Object} details
+   */
   constructor (code, details = {}) {
     super(code)
     this.type = 'wse-error'

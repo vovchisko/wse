@@ -1,18 +1,26 @@
+import EventEmitter from 'eventemitter3'
+import Sig          from 'a-signal'
+import WS           from 'isomorphic-ws'
+
 import { WseJSON }                                                             from './protocol.js'
-import EE                                                                      from 'eventemitter3'
-import Sig                                                                     from 'a-signal'
-import WS                                                                      from 'isomorphic-ws'
 import { make_stamp, WSE_CLIENT_ERRORS, WSE_REASON, WSE_SERVER_ERR, WseError } from './common.js'
 
 export class WseClient {
-  constructor ({ url, tO = 20, protocol = WseJSON, ...ws_options }) {
-    this.protocol = new protocol()
+  /**
+   * WseClient instance.
+   * @param options
+   * @param options.url - WS/WSS endpoint.
+   * @param {Number} [options.tO] - Timeout in seconds for RP calls.
+   * @param {WseJSON|Object} [options.protocol] - Message processor.
+   */
+  constructor ({ url, tO = 20, protocol, ...ws_options }) {
+    this.protocol = protocol || new WseJSON()
     this.url = url
     this.ws_options = ws_options
     this.reused = 0
     this.tO = tO
 
-    this.channel = new EE()
+    this.channel = new EventEmitter()
 
     this.ignored = new Sig()
     this.connected = new Sig()
@@ -33,6 +41,13 @@ export class WseClient {
     this._ws = null
   }
 
+  /**
+   * Connnect to WSE Server.
+   * @param {*} identity - A set of data or primitive value that identifies a user.
+   * @param {Object} [meta={}] - Optional data not involved into auth process, but will be passed forward.
+   * @returns {Promise<Object>}
+   * @throws {WSE_REASON}
+   */
   connect (identity = '', meta = {}) {
     return new Promise((resolve, reject) => {
       this.reused++
@@ -68,6 +83,27 @@ export class WseClient {
     })
   }
 
+  /**
+   * Called when server asks for CRA auth.
+   *
+   * @callback WseCraChallengerCb
+   * @param {*} quest - Any set of data
+   * @param {WseCraResolverFunction} solve - Function to call when answer is ready.
+   */
+
+  /**
+   * Call to send CRA answer.
+   *
+   * @function WseCraResolverFunction
+   * @param {*} answer - Asnwer on CRA quest
+   */
+
+  /**
+   * Set function responsible or CRA challenge auth.
+   * Solver will accept CRA quest and resolver callback.
+   *
+   * @param {WseCraChallengerCb} challenge_solver
+   */
   challenge (challenge_solver) {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
@@ -81,6 +117,12 @@ export class WseClient {
     return this.channel.emit(type, payload) || this.ignored.emit(type, payload)
   }
 
+  /**
+   * Send message to the server.
+   *
+   * @param {String} type
+   * @param {*} [payload]
+   */
   send (type, payload) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack({ type, payload }))
@@ -89,6 +131,11 @@ export class WseClient {
     }
   }
 
+  /**
+   * Close connection.
+   *
+   * @param {WSE_REASON} [reason]
+   */
   close (reason = WSE_REASON.BY_CLIENT) {
     if (this._ws) this._ws.close(1000, String(reason))
   }

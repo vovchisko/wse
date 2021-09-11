@@ -12,7 +12,7 @@ const CLIENT_VALID = 'CLIENT_VALID'
 
 class WseConnection {
   /**
-   *
+   * Wse Connection instance.
    * @param {WebSocket} ws_conn
    * @param {WseServer} server
    */
@@ -32,6 +32,21 @@ class WseConnection {
   }
 
   /**
+   * @returns {WebSocket.readyState}
+   */
+  get readyState () {
+    return this.ws_conn.readyState
+  }
+
+  /**
+   * Resolved client ID. (null if stranger or guest)
+   * @returns {string|null}
+   */
+  get cid () {
+    return this.client ? this.client.cid || null : null
+  }
+
+  /**
    * @param {WseIdentity} client
    */
   _identify_as (client) {
@@ -46,14 +61,6 @@ class WseConnection {
    */
   send (type, payload) {
     this.ws_conn.send(this.server.protocol.pack({ type, payload }))
-  }
-
-  get readyState () {
-    return this.ws_conn.readyState
-  }
-
-  get cid (){
-    return this.client ? this.client.cid || null : null
   }
 }
 
@@ -235,6 +242,13 @@ export class WseServer {
     }
   }
 
+  /**
+   * Handle incoming connection.
+   * @param {WseConnection} conn
+   * @param {ClientRequest} req
+   * @returns void
+   * @private
+   */
   _handle_connection (conn, req) {
     if (conn.ws_conn.protocol !== this.protocol.name) {
       return conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
@@ -245,10 +259,25 @@ export class WseServer {
     if (conn.remote_addr.substr(0, 7) === '::ffff:') conn.remote_addr = conn.remote_addr.substr(7)
   }
 
+  /**
+   * Handle valid message from the client.
+   * @param {WseConnection} conn
+   * @param {String} type
+   * @param {*} payload
+   * @private
+   */
   _handle_valid_message (conn, type, payload) {
     this.channel.emit(type, conn, payload) || this.ignored.emit(conn, type, payload)
   }
 
+  /**
+   * Handle valid RP call from the client.
+   * @param {WseConnection} conn
+   * @param {String} type
+   * @param {*} payload
+   * @param {String} stamp
+   * @private
+   */
   _handle_valid_call (conn, type, payload, stamp) {
     const reply = {}
     if (this._rps.has(type)) {
@@ -299,13 +328,20 @@ export class WseServer {
 
   /**
    * Unregister existing RP.
-   * @param {String} rp
+   * @param {String} rp RP name
    */
   unregister (rp) {
     if (!this._rps.has(rp)) throw new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, { rp })
     this._rps.delete(rp)
   }
 
+  /**
+   * Handle message from the client-stranger.
+   * @param {WseConnection} conn
+   * @param {String} type
+   * @param {*} payload
+   * @private
+   */
   _handle_stranger_message (conn, type, payload) {
     if (conn.valid_stat === CLIENT_STRANGER) {
       if (type === this.protocol.internal_types.hi) {
@@ -351,6 +387,14 @@ export class WseServer {
     })
   }
 
+  /**
+   * Handle valid RP call from the client.
+   * @param {WseConnection} conn
+   * @param {String} cid Resolved user identifier.
+   * @param {*} welcome_payload Payload from the server.
+   * @param {*} payload Client's payload
+   * @private
+   */
   _identify_connection (conn, cid, welcome_payload, payload) {
     if (!cid) {
       conn.ws_conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
@@ -437,6 +481,12 @@ class WseIdentity {
     Object.defineProperty(this, 'server', { enumerable: false, value: server })
   }
 
+  /**
+   * Add connection to the identity.
+   * @param {WseConnection} conn
+   * @returns {WseIdentity}
+   * @private
+   */
   _conn_add (conn) {
     conn._identify_as(this)
 
@@ -448,6 +498,12 @@ class WseIdentity {
     return this
   }
 
+  /**
+   * Drop connection by it's ID.
+   * @param {String} id
+   * @param {WSE_REASON} [reason]
+   * @private
+   */
   _conn_drop (id, reason = WSE_REASON.NO_REASON) {
     const conn = this.conns.get(id)
 
@@ -471,7 +527,7 @@ class WseIdentity {
   /**
    * Send a message to the client
    * @param {string} type - message type
-   * @param {string|number|object} payload - identity
+   * @param {*} [payload] - identity
    * @returns {boolean} - true if connection was opened, false - if not.
    */
   send (type, payload) {
