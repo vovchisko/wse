@@ -9,7 +9,7 @@ execute('external httpServer', async (success, fail) => {
 
   const externalServer = new http.Server()
 
-  const server = new WseServer({ identify, skipInit: true })
+  const server = new WseServer({ identify, server: externalServer })
   const client = new WseClient({ url: WS_URL })
 
   server.channel.on('test-message', (conn, payload) => {
@@ -19,7 +19,6 @@ execute('external httpServer', async (success, fail) => {
   })
 
   externalServer.listen(WS_PORT)
-  server.init({ server: externalServer })
 
 
   await client.connect(SECRET, { client_meta: 1 })

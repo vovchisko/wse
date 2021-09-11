@@ -93,7 +93,6 @@ export class WseServer {
    * @param {Function|WseServer.identifyCallback} options.identify Will be called for each new connection.
    * @param {Number} [options.connPerUser=1] How many connections allowed per user
    * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
-   * @param {Boolean} [options.skipInit=false] Allow to skip init step, and attach external server later.
    *
    * and classic ws params...
    * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
@@ -104,26 +103,24 @@ export class WseServer {
    * @param {String} [options.path] Accept only connections matching this path
    * @param {(Boolean|Object)} [options.perMessageDeflate=false] Enable/disable permessage-deflate
    * @param {Number} [options.port] The port where to bind the server
-   * @param {(http.Server|https.Server)} [options.server] A pre-created HTTP/S server to use
+   * @param {http.Server|https.Server|Object} [options.server] A pre-created HTTP/S server to use
    * @param {Boolean} [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
    * @param {Function} [options.verifyClient] A hook to reject connections
    */
   constructor ({
-    protocol,
+    protocol = undefined,
     identify,
     connPerUser = 1,
-    skipInit = false,
     ...options
   }) {
     if (!identify) throw new WseError(WSE_SERVER_ERR.IDENTIFY_HANDLER_MISSING)
 
     this.clients = new Map()
-    this.protocol = protocol ? new protocol() : new WseJSON()
-    this.options = {}
-    this.ws = null
+    this.protocol = protocol || new WseJSON()
     this.identify = identify
     this.connPerUser = connPerUser
 
+    this.ws = null
     this.channel = new EE()
 
     this.ignored = new Sig()
@@ -146,33 +143,13 @@ export class WseServer {
 
     this.cra_generator = null
 
-    if (skipInit) {
-      Object.assign(this.options, options)
-    } else {
-      this.init(options)
-    }
+    this.ws = new WebSocketServer({ ...options, handleProtocols: protocols_set => this.protocol.name })
+
+    this._listen()
   }
 
-  /**
-   * Initialize server.
-   * Can override initial options.
-   *
-   * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
-   * @param {Boolean} [options.clientTracking=true] Specifies whether or not to track clients
-   * @param {String} [options.host] The hostname where to bind the server
-   * @param {Number} [options.maxPayload=104857600] The maximum allowed message size
-   * @param {Boolean} [options.noServer=false] Enable no server mode
-   * @param {String} [options.path] Accept only connections matching this path
-   * @param {(Boolean|Object)} [options.perMessageDeflate=false] Enable/disable permessage-deflate
-   * @param {Number} [options.port] The port where to bind the server
-   * @param {(http.Server|https.Server)} [options.server] A pre-created HTTP/S server to use
-   * @param {Boolean} [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
-   * @param {Function} [options.verifyClient] A hook to reject connections
-   */
-  init (options) {
-    Object.assign(this.options, options)
 
-    this.ws = new WebSocketServer({ ...this.options, handleProtocols: (a) => this.protocol.name })
+  _listen () {
     this.ws.on('connection', (ws_conn, req) => {
       const conn = new WseConnection(ws_conn, this)
 

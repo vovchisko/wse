@@ -134,7 +134,7 @@ export class WseClient {
   /**
    * Close connection.
    *
-   * @param {WSE_REASON} [reason]
+   * @param {WSE_REASON|String} [reason]
    */
   close (reason = WSE_REASON.BY_CLIENT) {
     if (this._ws) this._ws.close(1000, String(reason))
