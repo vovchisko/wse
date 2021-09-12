@@ -8,28 +8,22 @@ export const WSE_REASON = Object.freeze({
   NO_REASON: 'wse.no-reason',
   BY_CLIENT: 'wse.by-client',
 })
-
 /**
- * @enum {WSE_CLIENT_ERR}
+ * @enum {WSE_ERROR}
  */
-export const WSE_CLIENT_ERR = Object.freeze({
-  CONNECTION_NOT_OPENED: 'wse.client.not-opened',
+export const WSE_ERROR = Object.freeze({
+  // client
   INVALID_CRA_HANDLER: 'wse.client.invalid-cra-handler',
   RP_TIMEOUT: 'wse.client.rp.timeout',
-  RP_NOT_EXISTS: 'wse.client.rp.not-exists',
-  RP_FAILED: 'wse.client.rp.failed',
-  RP_RESPONSE_ERR: 'wse.client.rp.response-error',
   RP_DISCONNECT: 'wse.client.rp.disconnect',
-  WS_ERROR: 'wse.client.ws-error',
-})
+  WS_CLIENT_ERROR: 'wse.client.ws-error',
+  CONNECTION_NOT_REAY: 'wse.client.not-ready',
 
-/**
- * @enum {WSE_SERVER_ERR}
- */
-export const WSE_SERVER_ERR = Object.freeze({
+  //server
   NO_CLIENT_CONNECTION: 'wse.server.client.connection-missing',
   IDENTIFY_HANDLER_MISSING: 'wse.server.auth.identify-handler-missing',
   INVALID_CRA_GENERATOR: 'wse.server.auth.invalid-cra-generator',
+  RP_EXECUTION_REJECTED: 'wse.server.rp.rejected',
   RP_EXECUTION_FAILED: 'wse.server.rp.failed',
   RP_NOT_REGISTERED: 'wse.server.rp.not-registered',
   RP_ALREADY_REGISTERED: 'wse.server.rp.already-registered',

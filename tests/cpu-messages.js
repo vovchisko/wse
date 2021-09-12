@@ -4,7 +4,7 @@ import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
 import { WseServer }                         from '../src/server.js'
 import { WseClient }                         from '../src/client.js'
 
-execute('x-cpu messages', async (success, fail) => {
+execute('cpu limit 3 - messages', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify, connPerUser: 3 })
 
   const clientA = new WseClient({ url: WS_URL })

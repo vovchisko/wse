@@ -2,8 +2,8 @@ import EE                             from 'eventemitter3'
 import { WebSocket, WebSocketServer } from 'ws'
 import Sig                            from 'a-signal'
 
-import { WseJSON }                                          from './protocol.js'
-import { make_stamp, WSE_REASON, WSE_SERVER_ERR, WseError } from './common.js'
+import { WseJSON }                                     from './protocol.js'
+import { make_stamp, WSE_ERROR, WSE_REASON, WseError } from './common.js'
 
 const CLIENT_STRANGER = 'CLIENT_STRANGER'
 const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
@@ -55,9 +55,19 @@ class WseConnection {
   }
 
   /**
+   * Send message over this connection with stamp signature.
+   * @param {String} type
+   * @param {*} [payload]
+   * @param {*} [stamp] responce stamp, can hold extra data.
+   */
+  _send_stamped (type, payload, stamp = undefined) {
+    this.ws_conn.send(this.server.protocol.pack({ type, payload, stamp }))
+  }
+
+  /**
    * Send message over this connection.
    * @param {String} type
-   * @param {*} payload
+   * @param {*} [payload]
    */
   send (type, payload) {
     this.ws_conn.send(this.server.protocol.pack({ type, payload }))
@@ -113,7 +123,7 @@ export class WseServer {
     connPerUser = 1,
     ...options
   }) {
-    if (!identify) throw new WseError(WSE_SERVER_ERR.IDENTIFY_HANDLER_MISSING)
+    if (!identify) throw new WseError(WSE_ERROR.IDENTIFY_HANDLER_MISSING)
 
     this.clients = new Map()
     this.protocol = protocol || new WseJSON()
@@ -172,7 +182,7 @@ export class WseServer {
               } else if (type) {
                 return this._handle_valid_message(conn, type, payload)
               } else {
-                throw new WseError(WSE_SERVER_ERR.PROTOCOL_VIOLATION, { type, payload, stamp })
+                throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { type, payload, stamp })
               }
 
             case CLIENT_STRANGER:
@@ -181,7 +191,7 @@ export class WseServer {
           }
         } catch (err) {
           const error = err.type !== 'wse-error'
-              ? new WseError(WSE_SERVER_ERR.MESSAGE_PROCESSING_ERROR, { raw: err })
+              ? new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err })
               : err
           error.message_from = conn.cid ? `${ conn.cid }#${ conn.conn_id }` : 'stranger'
           this.error.emit(err, conn)
@@ -203,7 +213,7 @@ export class WseServer {
         }
       })
 
-      conn.ws_conn.onerror = (e) => this.error.emit(new WseError(WSE_SERVER_ERR.CONNECTION_ERROR, { raw: e }), conn)
+      conn.ws_conn.onerror = (e) => this.error.emit(new WseError(WSE_ERROR.CONNECTION_ERROR, { raw: e }), conn)
     })
   }
 
@@ -215,7 +225,7 @@ export class WseServer {
     if (typeof cra_generator === 'function') {
       this.cra_generator = cra_generator
     } else {
-      throw new WseError(WSE_SERVER_ERR.INVALID_CRA_GENERATOR)
+      throw new WseError(WSE_ERROR.INVALID_CRA_GENERATOR)
     }
   }
 
@@ -256,41 +266,43 @@ export class WseServer {
    * @private
    */
   _handle_valid_call (conn, type, payload, stamp) {
-    const reply = {}
-    if (this._rps.has(type)) {
-      const rp = this._rps.get(type)
+    if (!this._rps.has(type)) {
+      conn._send_stamped(stamp, null, { code: WSE_ERROR.RP_NOT_REGISTERED })
+      return
+    }
 
-      const rp_wrap = async () => {
-        reply.result = await rp(conn, payload)
-        conn.send(stamp, reply)
+    const procedure = this._rps.get(type)
+
+    const rp_wrap = async () => {
+      const result = await procedure(conn, payload)
+      conn._send_stamped(stamp, result, { success: true })
+    }
+
+    rp_wrap().catch((err) => {
+      const re_stamp = {
+        code: WSE_ERROR.RP_EXECUTION_FAILED,
+        message: undefined,
       }
 
-      rp_wrap().catch(err => {
-        reply.error = { code: WSE_SERVER_ERR.RP_EXECUTION_FAILED }
-        conn.send(stamp, reply)
+      if (err instanceof Error) {
+        re_stamp.details = 'internal error during RP execution'
+        re_stamp.message = err.message
+      } else {
+        re_stamp.code = WSE_ERROR.RP_EXECUTION_REJECTED
+        re_stamp.details = err
+      }
 
-        this.error.emit(new WseError(WSE_SERVER_ERR.RP_EXECUTION_FAILED, {
-          type,
-          payload,
-          stamp,
-          cid: conn.cid,
-          conn_id: conn.conn_id,
-          raw: err,
-        }), conn)
-      })
+      conn._send_stamped(stamp, null, re_stamp)
 
-    } else {
-      reply.error = { code: WSE_SERVER_ERR.RP_NOT_REGISTERED }
-      conn.send(stamp, reply)
-
-      this.error.emit(new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, {
+      this.error.emit(new WseError(re_stamp.code, {
         type,
         payload,
         stamp,
         cid: conn.cid,
         conn_id: conn.conn_id,
+        err,
       }), conn)
-    }
+    })
   }
 
   /**
@@ -299,7 +311,7 @@ export class WseServer {
    * @param {Function} handler
    */
   register (rp, handler) {
-    if (this._rps.has(rp)) throw new WseError(WSE_SERVER_ERR.RP_ALREADY_REGISTERED, { rp })
+    if (this._rps.has(rp)) throw new WseError(WSE_ERROR.RP_ALREADY_REGISTERED, { rp })
     this._rps.set(rp, handler)
   }
 
@@ -308,7 +320,7 @@ export class WseServer {
    * @param {String} rp RP name
    */
   unregister (rp) {
-    if (!this._rps.has(rp)) throw new WseError(WSE_SERVER_ERR.RP_NOT_REGISTERED, { rp })
+    if (!this._rps.has(rp)) throw new WseError(WSE_ERROR.RP_NOT_REGISTERED, { rp })
     this._rps.delete(rp)
   }
 
@@ -484,7 +496,7 @@ class WseIdentity {
   _conn_drop (id, reason = WSE_REASON.NO_REASON) {
     const conn = this.conns.get(id)
 
-    if (!conn) throw new WseError(WSE_SERVER_ERR.NO_CLIENT_CONNECTION, { id })
+    if (!conn) throw new WseError(WSE_ERROR.NO_CLIENT_CONNECTION, { id })
 
     conn.ws_conn.removeAllListeners()
 

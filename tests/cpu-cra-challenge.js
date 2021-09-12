@@ -14,7 +14,7 @@ function identify ({ identity, resolve, meta, challenge }) {
   }
 }
 
-execute('x-cpu with cra', async (success, fail) => {
+execute('cpu limit 2 with cra', async (success, fail) => {
   const goals = {
     c2disconnect: null,
     c1connect: null,
@@ -24,7 +24,7 @@ execute('x-cpu with cra', async (success, fail) => {
     if (goals.c2disconnect && goals.c1connect) success('all correct')
   }
 
-  const server = new WseServer({ port: WS_PORT, identify })
+  const server = new WseServer({ port: WS_PORT, identify, connPerUser: 2 })
   const client1 = new WseClient({ url: WS_URL })
   const client2 = new WseClient({ url: WS_URL })
 

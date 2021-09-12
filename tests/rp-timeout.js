@@ -1,7 +1,7 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, wait, WS_PORT, WS_URL } from './_helpers.js'
-import { WSE_CLIENT_ERR }                          from '../src/common.js'
+import { WSE_ERROR }                               from '../src/common.js'
 import { WseServer }                               from '../src/server.js'
 import { WseClient }                               from '../src/client.js'
 
@@ -20,7 +20,7 @@ execute('rp timeout', async (success, fail) => {
     await client.call('test-rp', null)
     fail('still responds')
   } catch (e) {
-    if (e.code === WSE_CLIENT_ERR.RP_TIMEOUT) {
+    if (e.code === WSE_ERROR.RP_TIMEOUT) {
       success(`correct error ${ e.code }`)
     } else {
       fail(`incorrect error type ${ e }`)

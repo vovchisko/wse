@@ -5,7 +5,7 @@ import { WSE_REASON }                              from '../src/common.js'
 import { WseServer }                               from '../src/server.js'
 import { WseClient }                               from '../src/client.js'
 
-execute('connPerUser = 2', async (success, fail) => {
+execute('cpu limit 2', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify, connPerUser: 2 })
   const client1 = new WseClient({ url: WS_URL })
   const client2 = new WseClient({ url: WS_URL })
