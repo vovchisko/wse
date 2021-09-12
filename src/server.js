@@ -1,6 +1,6 @@
 import EE                             from 'eventemitter3'
 import { WebSocket, WebSocketServer } from 'ws'
-import Sig                            from 'a-signal'
+import Signal                         from 'a-signal'
 
 import { WseJSON }                                     from './protocol.js'
 import { make_stamp, WSE_ERROR, WSE_REASON, WseError } from './common.js'
@@ -52,16 +52,6 @@ class WseConnection {
   _identify_as (client) {
     this.client = client
     this.valid_stat = CLIENT_VALID
-  }
-
-  /**
-   * Send message over this connection with stamp signature.
-   * @param {String} type
-   * @param {*} [payload]
-   * @param {*} [stamp] responce stamp, can hold extra data.
-   */
-  _send_stamped (type, payload, stamp = undefined) {
-    this.ws_conn.send(this.server.protocol.pack({ type, payload, stamp }))
   }
 
   /**
@@ -133,12 +123,12 @@ export class WseServer {
     this.ws = null
     this.channel = new EE()
 
-    this.ignored = new Sig()
-    this.joined = new Sig()
-    this.left = new Sig()
-    this.connected = new Sig()
-    this.disconnected = new Sig()
-    this.error = new Sig()
+    this.ignored = new Signal()
+    this.joined = new Signal()
+    this.left = new Signal()
+    this.connected = new Signal()
+    this.disconnected = new Signal()
+    this.error = new Signal()
 
     this._rps = new Map()
 
@@ -151,7 +141,11 @@ export class WseServer {
       error: this.error.subscriber(),
     }
 
-    this.cra_generator = null
+    /**
+     * @type {function}
+     * @private
+     */
+    this._cra_generator = null
 
     this.ws = new WebSocketServer({ ...options, handleProtocols: protocols_set => this.protocol.name })
 
@@ -159,6 +153,10 @@ export class WseServer {
   }
 
 
+  /**
+   * Add listeners to the WS.
+   * @private
+   */
   _listen () {
     this.ws.on('connection', (ws_conn, req) => {
       const conn = new WseConnection(ws_conn, this)
@@ -223,7 +221,7 @@ export class WseServer {
    */
   useChallenge (cra_generator) {
     if (typeof cra_generator === 'function') {
-      this.cra_generator = cra_generator
+      this._cra_generator = cra_generator
     } else {
       throw new WseError(WSE_ERROR.INVALID_CRA_GENERATOR)
     }
@@ -267,7 +265,12 @@ export class WseServer {
    */
   _handle_valid_call (conn, type, payload, stamp) {
     if (!this._rps.has(type)) {
-      conn._send_stamped(stamp, null, { code: WSE_ERROR.RP_NOT_REGISTERED })
+      conn.ws_conn.send(this.protocol.pack({
+        type: stamp,
+        payload: null,
+        stamp: { code: WSE_ERROR.RP_NOT_REGISTERED },
+      }))
+
       return
     }
 
@@ -275,7 +278,12 @@ export class WseServer {
 
     const rp_wrap = async () => {
       const result = await procedure(conn, payload)
-      conn._send_stamped(stamp, result, { success: true })
+      conn.ws_conn.send(this.protocol.pack({
+        type: stamp,
+        payload: result,
+        stamp: { success: true },
+      }))
+
     }
 
     rp_wrap().catch((err) => {
@@ -292,7 +300,11 @@ export class WseServer {
         re_stamp.details = err
       }
 
-      conn._send_stamped(stamp, null, re_stamp)
+      conn.ws_conn.send(this.protocol.pack({
+        type: stamp,
+        payload: null,
+        stamp: re_stamp,
+      }))
 
       this.error.emit(new WseError(re_stamp.code, {
         type,
@@ -339,8 +351,8 @@ export class WseServer {
 
         Object.assign(conn.meta, payload.meta || {})
 
-        if (typeof this.cra_generator === 'function') {
-          this.cra_generator(conn.identity, conn.meta, (quest) => {
+        if (typeof this._cra_generator === 'function') {
+          this._cra_generator(conn.identity, conn.meta, (quest) => {
             conn.challenge_quest = quest
             conn.send(this.protocol.internal_types.challenge, quest)
             conn.valid_stat = CLIENT_CHALLENGED
@@ -369,7 +381,7 @@ export class WseServer {
       identity: conn.identity,
       meta: conn.meta,
       resolve,
-      challenge: typeof this.cra_generator === 'function'
+      challenge: typeof this._cra_generator === 'function'
           ? { quest: conn.challenge_quest, response: conn.challenge_response }
           : null,
       id: conn.conn_id,

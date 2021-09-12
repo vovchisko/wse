@@ -1,5 +1,5 @@
 import EventEmitter from 'eventemitter3'
-import Sig          from 'a-signal'
+import Signal       from 'a-signal'
 import WS           from 'isomorphic-ws'
 
 import { WseJSON }                                     from './protocol.js'
@@ -22,11 +22,11 @@ export class WseClient {
 
     this.channel = new EventEmitter()
 
-    this.ignored = new Sig()
-    this.connected = new Sig()
-    this.ready = new Sig()
-    this.error = new Sig()
-    this.closed = new Sig()
+    this.ignored = new Signal()
+    this.connected = new Signal()
+    this.ready = new Signal()
+    this.error = new Signal()
+    this.closed = new Signal()
 
     this.when = {
       ignored: this.ignored.subscriber(),
@@ -112,6 +112,13 @@ export class WseClient {
     }
   }
 
+  /**
+   * Process message.
+   *
+   * @param message
+   * @return {boolean|void}
+   * @private
+   */
   _process_msg (message) {
     let [ type, payload, stamp ] = this.protocol.unpack(message.data)
     return this.channel.emit(type, payload, stamp) || this.ignored.emit(type, payload, stamp)
