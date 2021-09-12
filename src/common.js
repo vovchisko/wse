@@ -10,9 +10,9 @@ export const WSE_REASON = Object.freeze({
 })
 
 /**
- * @enum {WSE_CLIENT_ERRORS}
+ * @enum {WSE_CLIENT_ERR}
  */
-export const WSE_CLIENT_ERRORS = Object.freeze({
+export const WSE_CLIENT_ERR = Object.freeze({
   CONNECTION_NOT_OPENED: 'wse.client.not-opened',
   INVALID_CRA_HANDLER: 'wse.client.invalid-cra-handler',
   RP_TIMEOUT: 'wse.client.rp.timeout',

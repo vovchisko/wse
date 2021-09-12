@@ -1,7 +1,7 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WSE_CLIENT_ERRORS }                 from '../src/common.js'
+import { WSE_CLIENT_ERR }                    from '../src/common.js'
 import { WseServer }                         from '../src/server.js'
 import { WseClient }                         from '../src/client.js'
 
@@ -14,7 +14,7 @@ execute('rp not existing call', async (success, fail) => {
   try {
     await client.call('no-existing-rp')
   } catch (e) {
-    if (e.code === WSE_CLIENT_ERRORS.RP_NOT_EXISTS) {
+    if (e.code === WSE_CLIENT_ERR.RP_NOT_EXISTS) {
       success(e.code)
     } else {
       fail(`invalid error code ${ e }`)

@@ -1,7 +1,7 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, wait, WS_PORT, WS_URL } from './_helpers.js'
-import { WSE_CLIENT_ERRORS, WSE_SERVER_ERR }       from '../src/common.js'
+import { WSE_CLIENT_ERR, WSE_SERVER_ERR }          from '../src/common.js'
 import { WseServer }                               from '../src/server.js'
 import { WseClient }                               from '../src/client.js'
 
@@ -23,8 +23,8 @@ execute('rp timeout', async (success, fail) => {
     fail('still responds')
   } catch (e) {
     if ([
-      WSE_CLIENT_ERRORS.RP_DISCONNECT, // only correct answer for the browser
-      WSE_CLIENT_ERRORS.RP_FAILED, // node (in test)
+      WSE_CLIENT_ERR.RP_DISCONNECT, // only correct answer for the browser
+      WSE_CLIENT_ERR.RP_FAILED, // node (in test)
       WSE_SERVER_ERR.RP_EXECUTION_FAILED, // node (in test)
     ].includes(e.code)) {
       success('mostly correct err: ' + e.code)

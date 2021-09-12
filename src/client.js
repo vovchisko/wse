@@ -2,8 +2,8 @@ import EventEmitter from 'eventemitter3'
 import Sig          from 'a-signal'
 import WS           from 'isomorphic-ws'
 
-import { WseJSON }                                                             from './protocol.js'
-import { make_stamp, WSE_CLIENT_ERRORS, WSE_REASON, WSE_SERVER_ERR, WseError } from './common.js'
+import { WseJSON }                                                          from './protocol.js'
+import { make_stamp, WSE_CLIENT_ERR, WSE_REASON, WSE_SERVER_ERR, WseError } from './common.js'
 
 export class WseClient {
   /**
@@ -75,7 +75,7 @@ export class WseClient {
           this._process_msg(message)
         }
       }
-      this._ws.onerror = (err) => this.error.emit(new WseError(WSE_CLIENT_ERRORS.WS_ERROR, { raw: err }))
+      this._ws.onerror = (err) => this.error.emit(new WseError(WSE_CLIENT_ERR.WS_ERROR, { raw: err }))
       this._ws.onclose = (event) => {
         this.closed.emit(event.code, String(event.reason))
         reject(String(event.reason))
@@ -108,7 +108,7 @@ export class WseClient {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
     } else {
-      throw new WseError(WSE_CLIENT_ERRORS.INVALID_CRA_HANDLER)
+      throw new WseError(WSE_CLIENT_ERR.INVALID_CRA_HANDLER)
     }
   }
 
@@ -127,7 +127,7 @@ export class WseClient {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack({ type, payload }))
     } else {
-      this.error.emit(new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED))
+      this.error.emit(new WseError(WSE_CLIENT_ERR.CONNECTION_NOT_OPENED))
     }
   }
 
@@ -160,10 +160,10 @@ export class WseClient {
             closedBind.off()
             resolve(payload.result)
           } else {
-            let err_code = WSE_CLIENT_ERRORS.RP_RESPONSE_ERR
+            let err_code = WSE_CLIENT_ERR.RP_RESPONSE_ERR
             if (payload.error && payload.error.code) {
-              if (payload.error.code === WSE_SERVER_ERR.RP_NOT_REGISTERED) err_code = WSE_CLIENT_ERRORS.RP_NOT_EXISTS
-              if (payload.error.code === WSE_SERVER_ERR.RP_EXECUTION_FAILED) err_code = WSE_CLIENT_ERRORS.RP_FAILED
+              if (payload.error.code === WSE_SERVER_ERR.RP_NOT_REGISTERED) err_code = WSE_CLIENT_ERR.RP_NOT_EXISTS
+              if (payload.error.code === WSE_SERVER_ERR.RP_EXECUTION_FAILED) err_code = WSE_CLIENT_ERR.RP_FAILED
             }
             return rejection(err_code, payload)
           }
@@ -176,14 +176,14 @@ export class WseClient {
         }
 
         const closedBind = this.closed.once((code, reason) => {
-          rejection(WSE_CLIENT_ERRORS.RP_DISCONNECT, { code, reason })
+          rejection(WSE_CLIENT_ERR.RP_DISCONNECT, { code, reason })
         })
 
         this.channel.once(stamp, handler)
 
         if (this.tO > 0) {
           timeout = setTimeout(() => {
-            return rejection(WSE_CLIENT_ERRORS.RP_TIMEOUT)
+            return rejection(WSE_CLIENT_ERR.RP_TIMEOUT)
           }, this.tO * 1000)
         }
 
@@ -191,7 +191,7 @@ export class WseClient {
         this._ws.send(this.protocol.pack({ type: rp, payload, stamp }))
       })
     } else {
-      const err = new WseError(WSE_CLIENT_ERRORS.CONNECTION_NOT_OPENED)
+      const err = new WseError(WSE_CLIENT_ERR.CONNECTION_NOT_OPENED)
       this.error.emit(err)
       throw err
     }
