@@ -14,6 +14,7 @@ import { runner } from 'test-a-bit'
     { script: './tests/cpu-messages.js' },
     { script: './tests/cra-challenge.js' },
     { script: './tests/cra-fail.js' },
+    { script: './tests/cra-fail-halfway.js' },
     { script: './tests/disconnect.js' },
     { script: './tests/external-server.js' },
     { script: './tests/invalid-auth.js' },

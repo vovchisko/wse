@@ -356,7 +356,7 @@ export class WseServer {
             conn.challenge_quest = quest
             conn.send(this.protocol.internal_types.challenge, quest)
             conn.valid_stat = CLIENT_CHALLENGED
-          })
+          }, () => this._refuse_connection(conn))
           return
         }
       } else {
