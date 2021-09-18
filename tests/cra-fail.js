@@ -6,12 +6,12 @@ import { WseClient }               from '../src/client.js'
 
 execute('cra-challenge fail', async (success, fail) => {
 
-  function identifyWithCra ({ identity, resolve, meta, challenge }) {
+  function identifyWithCra ({ identity, accept, refuse, meta, challenge }) {
     if (identity === SECRET && challenge.response === 42) {
       const user_id = meta.user_id || 'USR-1'
-      resolve(user_id)
+      accept(user_id)
     } else {
-      resolve(false)
+      refuse()
     }
   }
 

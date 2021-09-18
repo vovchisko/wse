@@ -4,13 +4,13 @@ import { SECRET, WS_PORT, WS_URL } from './_helpers.js'
 import { WseServer }               from '../src/server.js'
 import { WseClient }               from '../src/client.js'
 
-function identify ({ identity, resolve, meta, challenge }) {
+function identify ({ identity, accept, meta, challenge }) {
   if (identity === SECRET) {
     const user_id = meta.user_id || 'USR-1'
-    if (challenge.response !== 3) return resolve(false)
-    resolve(user_id, { hey: 'some additional data for the client' })
+    if (challenge.response !== 3) return accept(false)
+    accept(user_id, { hey: 'some additional data for the client' })
   } else {
-    resolve(false)
+    accept(false)
   }
 }
 

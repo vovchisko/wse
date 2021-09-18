@@ -373,19 +373,29 @@ export class WseServer {
       }
     }
 
-    const resolve = (cid, welcome_payload) => {
+    const accept = (cid, welcome_payload) => {
       this._identify_connection(conn, cid, welcome_payload, payload)
+    }
+
+    const refuse = () => {
+      this._refuse_connection(conn)
     }
 
     this.identify({
       identity: conn.identity,
       meta: conn.meta,
-      resolve,
+      resolve: accept, //
+      accept,
+      refuse,
       challenge: typeof this._cra_generator === 'function'
           ? { quest: conn.challenge_quest, response: conn.challenge_response }
           : null,
       id: conn.conn_id,
     })
+  }
+
+  _refuse_connection (conn) {
+    conn.ws_conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
   }
 
   /**
@@ -397,10 +407,7 @@ export class WseServer {
    * @private
    */
   _identify_connection (conn, cid, welcome_payload, payload) {
-    if (!cid) {
-      conn.ws_conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
-      return
-    }
+    if (!cid) this._refuse_connection(conn)
 
     let wasNewIdentity = false
 

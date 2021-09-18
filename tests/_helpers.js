@@ -9,12 +9,12 @@ export const WS_URL = `ws://localhost:${ WS_PORT }`
  * @param resolve
  * @param meta
  */
-export function identify ({ identity, resolve, meta }) {
+export function identify ({ identity, accept, meta }) {
   if (identity === SECRET) {
     const user_id = meta.user_id || 'USR-' + USER_ID_COUNTER++
-    resolve(user_id, { hey: 'some additional data for the client' })
+    accept(user_id, { hey: 'some additional data for the client' })
   } else {
-    resolve(false)
+    accept(false)
   }
 }
 

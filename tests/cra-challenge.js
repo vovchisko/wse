@@ -5,13 +5,13 @@ import { WseServer }               from '../src/server.js'
 import { WseClient }               from '../src/client.js'
 
 execute('cra-challenge', async (success, fail) => {
-  function identifyWithCra ({ identity, resolve, meta, challenge }) {
+  function identifyWithCra ({ identity, accept, meta, challenge }) {
     if (identity === SECRET) {
       const user_id = meta.user_id || 'USR-1'
       if (challenge.response !== 3) fail('failed challenge')
-      resolve(user_id, { hey: 'some additional data for the client' })
+      accept(user_id, { hey: 'some additional data for the client' })
     } else {
-      resolve(false)
+      accept(false)
     }
   }
 

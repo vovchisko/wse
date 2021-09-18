@@ -22,12 +22,12 @@ npm i wse -s
 import { WseServer } from 'wse'
 
 // auth handler
-function identify ({ payload, resolve, meta }) {
+function identify ({ payload, accept, meta }) {
   if (payload === SECRET) {
     const cid = 'any user id here'
-    resolve(cid, { hey: 'welcome back!' })
+    accept(cid, { hey: 'welcome back!' })
   } else {
-    resolve(false)
+    reject()
   }
 }
 
