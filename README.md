@@ -75,5 +75,8 @@ payload of the WebSocket frames.
 
 Read More: https://www.npmjs.com/package/ws#opt-in-for-performance
 
-
+### Todo:
+- `server.useChallenge(()=>{})` - combine all arguments into an object.
+- `client.connect()` - let pass challenger.
+- add auto-reconnect (and it's prevention as well).
 
