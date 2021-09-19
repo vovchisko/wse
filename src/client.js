@@ -11,9 +11,10 @@ export class WseClient {
    * @param options
    * @param options.url - WS/WSS endpoint.
    * @param {Number} [options.tO] - Timeout in seconds for RP calls.
+   * @param {Boolean} [options.re] - Reconnect In cause of 1006 code closure.
    * @param {WseJSON|Object} [options.protocol] - Message processor.
    */
-  constructor ({ url, tO = 20, protocol, reConnect = false, ...ws_options }) {
+  constructor ({ url, tO = 20, protocol, re = false, ...ws_options }) {
     this.protocol = protocol || new WseJSON()
     this.url = url
     this.ws_options = ws_options
@@ -28,8 +29,9 @@ export class WseClient {
     this.updated = new Signal({ memorable: true, late: true })
     this.error = new Signal()
     this.closed = new Signal()
-    this.reConnect = reConnect
-    this.reconnect_t0_min = 1000
+    this.re = re
+    this.re_t0 = 1000
+    this.re_on_codes = [ 1005, 1006, 1011, 1012, 1013, 1014 ]
     this.when = {
       ignored: this.ignored.subscriber(),
       connected: this.connected.subscriber(),
@@ -111,8 +113,8 @@ export class WseClient {
         _reject(String(event.reason) || WSE_REASON.NO_REASON)
         _flushPromise()
       }
-      if (this.reConnect) {
-        const in_s = this.reconnect_t0_min + (Math.random() * 1000)
+      if (this.re && this.re_on_codes.includes(event.code)) {
+        const in_s = this.re_t0 + (Math.random() * 1000)
         this._update_status(WSE_STATUS.RE_CONNECTING)
         setTimeout(tryConnect, in_s)
       }
