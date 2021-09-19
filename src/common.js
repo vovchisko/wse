@@ -2,12 +2,20 @@
  * @enum {WSE_REASON}
  */
 export const WSE_REASON = Object.freeze({
+  NO_REASON: 'wse.unknown-reason',
   CLIENTS_CONCURRENCY: 'wse.clients-concurrency',
   NOT_AUTHORIZED: 'wse.not-authorized',
   PROTOCOL_ERR: 'wse.protocol-error',
-  NO_REASON: 'wse.no-reason',
   BY_CLIENT: 'wse.by-client',
 })
+
+export const WSE_STATUS = {
+  IDLE: 'IDLE',
+  OFFLINE: 'OFFLINE',
+  READY: 'READY',
+  CONNECTING: 'CONNECTING',
+  RE_CONNECTING: 'RE_CONNECTING',
+}
 /**
  * @enum {WSE_ERROR}
  */
@@ -16,7 +24,9 @@ export const WSE_ERROR = Object.freeze({
   INVALID_CRA_HANDLER: 'wse.client.invalid-cra-handler',
   RP_TIMEOUT: 'wse.client.rp.timeout',
   RP_DISCONNECT: 'wse.client.rp.disconnect',
+  CLIENT_ALREADY_CONNECTED: 'wse.client.already-connected',
   WS_CLIENT_ERROR: 'wse.client.ws-error',
+  NOT_AUTHORIZED: 'wse.not-authorized',
   CONNECTION_NOT_REAY: 'wse.client.not-ready',
 
   //server

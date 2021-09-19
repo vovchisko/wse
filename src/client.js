@@ -2,8 +2,8 @@ import EventEmitter from 'eventemitter3'
 import Signal       from 'a-signal'
 import WS           from 'isomorphic-ws'
 
-import { WseJSON }                                     from './protocol.js'
-import { make_stamp, WSE_ERROR, WSE_REASON, WseError } from './common.js'
+import { WseJSON }                                                 from './protocol.js'
+import { make_stamp, WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
 
 export class WseClient {
   /**
@@ -13,7 +13,7 @@ export class WseClient {
    * @param {Number} [options.tO] - Timeout in seconds for RP calls.
    * @param {WseJSON|Object} [options.protocol] - Message processor.
    */
-  constructor ({ url, tO = 20, protocol, ...ws_options }) {
+  constructor ({ url, tO = 20, protocol, reConnect = false, ...ws_options }) {
     this.protocol = protocol || new WseJSON()
     this.url = url
     this.ws_options = ws_options
@@ -24,21 +24,29 @@ export class WseClient {
 
     this.ignored = new Signal()
     this.connected = new Signal()
-    this.ready = new Signal()
+    this.ready = new Signal({ late: true, memorable: true })
+    this.updated = new Signal({ memorable: true, late: true })
     this.error = new Signal()
     this.closed = new Signal()
-
+    this.reConnect = reConnect
+    this.reconnect_t0_min = 1000
     this.when = {
       ignored: this.ignored.subscriber(),
       connected: this.connected.subscriber(),
       ready: this.ready.subscriber(),
       error: this.error.subscriber(),
       closed: this.closed.subscriber(),
+      updated: this.updated.subscriber(),
     }
 
+    this.status = WSE_STATUS.IDLE
     this.challenge_solver = null
-
     this._ws = null
+  }
+
+  _update_status (status) {
+    this.updated.emit(status)
+    this.status = status
   }
 
   /**
@@ -46,41 +54,92 @@ export class WseClient {
    * @param {*} identity - A set of data or primitive value that identifies a user.
    * @param {Object} [meta={}] - Optional data not involved into auth process, but will be passed forward.
    * @returns {Promise<Object>}
-   * @throws {WSE_REASON}
+   * @throws {WSE_ERROR}
    */
   connect (identity = '', meta = {}) {
-    return new Promise((resolve, reject) => {
+    if (this._ws) throw WSE_ERROR.CLIENT_ALREADY_CONNECTED
+
+    this._update_status(WSE_STATUS.CONNECTING)
+
+    let _resolve, _reject
+    const _flushPromise = () => {
+      // paranoic
+      _resolve = null
+      _reject = null
+    }
+
+    const handleOpen = () => {
+      this.send(this.protocol.internal_types.hi, { identity, meta })
+      this.connected.emit()
+    }
+
+    const handlePreMessage = (message) => {
+      const [ type, payload ] = this.protocol.unpack(message.data)
+      if (type === this.protocol.internal_types.challenge) {
+        if (typeof this.challenge_solver === 'function') {
+          this.challenge_solver(payload, (solution) => {
+            this.send(this.protocol.internal_types.challenge, solution)
+          })
+          return
+        }
+      }
+      if (type === this.protocol.internal_types.welcome) {
+        if (_resolve) {
+          _resolve(payload)
+          _flushPromise()
+          this._ws.onmessage = handleMessage
+        }
+        this._update_status(WSE_STATUS.READY)
+        this.ready.emit(payload)
+      }
+    }
+
+    const handleMessage = (message) => {
+      this._process_msg(message)
+    }
+
+    const handleError = (err) => {
+      this.error.emit(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
+    }
+
+    const handleClose = (event) => {
+      this.closed.emit(event.code, String(event.reason))
+      this._update_status(WSE_STATUS.OFFLINE)
+
+      this._wipe_ws()
+      if (_reject) {
+        _reject(String(event.reason) || WSE_REASON.NO_REASON)
+        _flushPromise()
+      }
+      if (this.reConnect) {
+        const in_s = this.reconnect_t0_min + (Math.random() * 1000)
+        this._update_status(WSE_STATUS.RE_CONNECTING)
+        setTimeout(tryConnect, in_s)
+      }
+    }
+
+    const tryConnect = () => {
       this.reused++
       this._ws = new WS(this.url, this.protocol.name, this.ws_options)
+      this._ws.onopen = handleOpen
+      this._ws.onmessage = handlePreMessage
+      this._ws.onerror = handleError
+      this._ws.onclose = handleClose
+    }
 
-      this._ws.onopen = () => {
-        this.send(this.protocol.internal_types.hi, { identity, meta })
-        this.connected.emit(identity, meta)
-      }
-      this._ws.onmessage = (message) => {
-        let [ type, payload ] = this.protocol.unpack(message.data)
-        if (type === this.protocol.internal_types.challenge) {
-          if (typeof this.challenge_solver === 'function') {
-            this.challenge_solver(payload, (solution) => {
-              this.send(this.protocol.internal_types.challenge, solution)
-            })
-            return
-          }
-        }
-        if (type === this.protocol.internal_types.welcome) {
-          this.ready.emit(payload)
-          resolve(payload)
-        }
-        this._ws.onmessage = (message) => {
-          this._process_msg(message)
-        }
-      }
-      this._ws.onerror = (err) => this.error.emit(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
-      this._ws.onclose = (event) => {
-        this.closed.emit(event.code, String(event.reason))
-        reject(String(event.reason))
-      }
+    return new Promise((resolve, reject) => {
+      _resolve = resolve
+      _reject = reject
+      tryConnect()
     })
+  }
+
+  _wipe_ws () {
+    this._ws.onopen = null
+    this._ws.onmessage = null
+    this._ws.onerror = null
+    this._ws.onclose = null
+    this._ws = null
   }
 
   /**
