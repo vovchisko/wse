@@ -75,6 +75,11 @@ export class WseClient {
       this.connected.emit()
     }
 
+
+    const handleMessage = (message) => {
+      this._process_msg(message)
+    }
+
     const handlePreMessage = (message) => {
       const [ type, payload ] = this.protocol.unpack(message.data)
       if (type === this.protocol.internal_types.challenge) {
@@ -89,15 +94,11 @@ export class WseClient {
         if (_resolve) {
           _resolve(payload)
           _flushPromise()
-          this._ws.onmessage = handleMessage
         }
+        this._ws.onmessage = handleMessage
         this._update_status(WSE_STATUS.READY)
         this.ready.emit(payload)
       }
-    }
-
-    const handleMessage = (message) => {
-      this._process_msg(message)
     }
 
     const handleError = (err) => {
