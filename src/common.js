@@ -1,5 +1,5 @@
 /**
- * @enum {WSE_REASON}
+ * @enum {string}
  */
 export const WSE_REASON = Object.freeze({
   NO_REASON: 'wse.no-reason',
@@ -9,6 +9,9 @@ export const WSE_REASON = Object.freeze({
   BY_CLIENT: 'wse.by-client',
 })
 
+/**
+ * @enum {string}
+ */
 export const WSE_STATUS = {
   IDLE: 'IDLE',
   OFFLINE: 'OFFLINE',
@@ -16,8 +19,9 @@ export const WSE_STATUS = {
   CONNECTING: 'CONNECTING',
   RE_CONNECTING: 'RE_CONNECTING',
 }
+
 /**
- * @enum {WSE_ERROR}
+ * @enum {string}
  */
 export const WSE_ERROR = Object.freeze({
   // client

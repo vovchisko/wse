@@ -33,13 +33,13 @@
     "a-signal": "^2.1.1",
     "eventemitter3": "^4.0.7",
     "isomorphic-ws": "^4.0.1",
-    "ws": "^8.2.1"
+    "ws": "^8.8.1"
   },
   "devDependencies": {
     "test-a-bit": "^1.0.0"
   },
   "optionalDependencies": {
-    "bufferutil": "^4.0.3",
-    "utf-8-validate": "^5.0.5"
+    "bufferutil": "^4.0.6",
+    "utf-8-validate": "^5.0.9"
   }
 }

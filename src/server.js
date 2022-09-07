@@ -26,14 +26,17 @@ class WseConnection {
 
     this.remote_addr = ''
 
+    /** @type {WseIdentity} */
     Object.defineProperty(this, 'client', { enumerable: false, value: null, writable: true })
+
+    /** @type import('ws').WebSocket */
     Object.defineProperty(this, 'ws_conn', { enumerable: false, value: ws_conn })
+
+    /** @type import('ws').WebSocketServer */
     Object.defineProperty(this, 'server', { enumerable: false, value: server })
   }
 
-  /**
-   * @returns {WebSocket.readyState}
-   */
+  /** @returns {Number} */
   get readyState () {
     return this.ws_conn.readyState
   }
@@ -89,23 +92,24 @@ export class WseServer {
   /**
    * WseServer class.
    *
-   * @param {Object} options see https://github.com/websockets/ws/#readme.
+   * @param {Object}    options see https://github.com/websockets/ws/#readme.
+   *
    * @param {Function|WseServer.identifyCallback} options.identify Will be called for each new connection.
-   * @param {Number} [options.connPerUser=1] How many connections allowed per user
-   * @param {Object} [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
+   * @param {Number}    [options.connPerUser=1] How many connections allowed per user
+   * @param {Object}    [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    *
    * and classic ws params...
-   * @param {Number} [options.backlog=511] The maximum length of the queue of pending connections
-   * @param {Boolean} [options.clientTracking=true] Specifies whether or not to track clients
-   * @param {String} [options.host] The hostname where to bind the server
-   * @param {Number} [options.maxPayload=104857600] The maximum allowed message size
-   * @param {Boolean} [options.noServer=false] Enable no server mode
-   * @param {String} [options.path] Accept only connections matching this path
+   * @param {Number}    [options.backlog=511] The maximum length of the queue of pending connections
+   * @param {Boolean}   [options.clientTracking=true] Specifies whether or not to track clients
+   * @param {String}    [options.host] The hostname where to bind the server
+   * @param {Number}    [options.maxPayload=104857600] The maximum allowed message size
+   * @param {Boolean}   [options.noServer=false] Enable no server mode
+   * @param {String}    [options.path] Accept only connections matching this path
    * @param {(Boolean|Object)} [options.perMessageDeflate=false] Enable/disable permessage-deflate
-   * @param {Number} [options.port] The port where to bind the server
-   * @param {http.Server|https.Server|Object} [options.server] A pre-created HTTP/S server to use
-   * @param {Boolean} [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
-   * @param {Function} [options.verifyClient] A hook to reject connections
+   * @param {Number}    [options.port] The port where to bind the server
+   * @param {import('http').Server|import('https').Server|Object} [options.server] A pre-created HTTP/S server to use
+   * @param {Boolean}   [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
+   * @param {Function}  [options.verifyClient] A hook to reject connections
    */
   constructor ({
     protocol = undefined,
@@ -147,7 +151,7 @@ export class WseServer {
      */
     this._cra_generator = null
 
-    this.ws = new WebSocketServer({ ...options, handleProtocols: protocols_set => this.protocol.name })
+    this.ws = new WebSocketServer({ ...options, handleProtocols: _ => this.protocol.name })
 
     this._listen()
   }
@@ -230,18 +234,18 @@ export class WseServer {
   /**
    * Handle incoming connection.
    * @param {WseConnection} conn
-   * @param {ClientRequest} req
+   * @param {import('http').Request} req
    * @returns void
    * @private
    */
   _handle_connection (conn, req) {
     if (conn.ws_conn.protocol !== this.protocol.name) {
-      return conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
+      conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
+      return
     }
 
     // RESOLVING IPV4 REMOTE ADDR
-    conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress
-    if (conn.remote_addr.substr(0, 7) === '::ffff:') conn.remote_addr = conn.remote_addr.substr(7)
+    conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
   }
 
   /**
@@ -384,7 +388,6 @@ export class WseServer {
     this.identify({
       identity: conn.identity,
       meta: conn.meta,
-      resolve: accept, //
       accept,
       refuse,
       challenge: typeof this._cra_generator === 'function'
@@ -446,7 +449,7 @@ export class WseServer {
   /**
    * Drop client with specific ID.
    * @param {String} id client ID
-   * @param {String} [reason] WSE_REASON
+   * @param {WSE_REASON} [reason] WSE_REASON
    */
   dropClient (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
