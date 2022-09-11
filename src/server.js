@@ -291,17 +291,10 @@ export class WseServer {
     }
 
     rp_wrap().catch((err) => {
-      const re_stamp = {
+      const re_stamp = err.code && err.details ? err : {
         code: WSE_ERROR.RP_EXECUTION_FAILED,
-        message: undefined,
-      }
-
-      if (err instanceof Error) {
-        re_stamp.details = 'internal error during RP execution'
-        re_stamp.message = err.message
-      } else {
-        re_stamp.code = WSE_ERROR.RP_EXECUTION_REJECTED
-        re_stamp.details = err
+        message: err.message || 'Unexpected error',
+        details: err,
       }
 
       conn.ws_conn.send(this.protocol.pack({
@@ -310,7 +303,7 @@ export class WseServer {
         stamp: re_stamp,
       }))
 
-      this.error.emit(new WseError(re_stamp.code, {
+      this.error.emit(new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
         type,
         payload,
         stamp,

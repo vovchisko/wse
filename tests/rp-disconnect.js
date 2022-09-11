@@ -24,7 +24,6 @@ execute('rp timeout', async (success, fail) => {
   } catch (e) {
     if ([
       WSE_ERROR.RP_DISCONNECT, // only correct answer for the browser
-      WSE_ERROR.RP_EXECUTION_REJECTED, // node (in test)
       WSE_ERROR.RP_EXECUTION_FAILED, // node (in test)
     ].includes(e.code)) {
       success('mostly correct err: ' + e.code)

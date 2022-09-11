@@ -29,6 +29,7 @@ import { runner } from 'test-a-bit'
     { script: './tests/rp-throw-custom.js' },
     { script: './tests/rp-throw-not-registered.js' },
     { script: './tests/rp-throw-vanilla.js' },
+    { script: './tests/rp-throw-wse.js' },
     { script: './tests/rp-timeout.js' },
     { script: './tests/server2client.js' },
     { script: './tests/server2client-ignored.js' },

@@ -37,7 +37,6 @@ export const WSE_ERROR = Object.freeze({
   NO_CLIENT_CONNECTION: 'wse.server.client.connection-missing',
   IDENTIFY_HANDLER_MISSING: 'wse.server.auth.identify-handler-missing',
   INVALID_CRA_GENERATOR: 'wse.server.auth.invalid-cra-generator',
-  RP_EXECUTION_REJECTED: 'wse.server.rp.rejected',
   RP_EXECUTION_FAILED: 'wse.server.rp.failed',
   RP_NOT_REGISTERED: 'wse.server.rp.not-registered',
   RP_ALREADY_REGISTERED: 'wse.server.rp.already-registered',
