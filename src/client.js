@@ -33,12 +33,12 @@ export class WseClient {
     this.re_t0 = 1000
     this.re_on_codes = [ 1005, 1006, 1011, 1012, 1013, 1014 ]
     this.when = {
-      ignored: this.ignored.subscriber(),
-      connected: this.connected.subscriber(),
-      ready: this.ready.subscriber(),
-      error: this.error.subscriber(),
-      closed: this.closed.subscriber(),
-      updated: this.updated.subscriber(),
+      ignored: this.ignored.extractOn(),
+      connected: this.connected.extractOn(),
+      ready: this.ready.extractOn(),
+      error: this.error.extractOn(),
+      closed: this.closed.extractOn(),
+      updated: this.updated.extractOn(),
     }
 
     this.status = WSE_STATUS.IDLE
@@ -111,7 +111,7 @@ export class WseClient {
 
       this._wipe_ws()
       if (_reject) {
-        _reject(String(event.reason) || WSE_REASON.NO_REASON)
+        _reject(String(event.reason))
         _flushPromise()
       }
       if (this.re && this.re_on_codes.includes(event.code)) {
@@ -208,7 +208,7 @@ export class WseClient {
    * @param {WSE_REASON|String} [reason]
    */
   close (reason = WSE_REASON.BY_CLIENT) {
-    if (this._ws) this._ws.close(1000, String(reason))
+    if (this._ws) this._ws.close(1000, reason)
   }
 
   /**

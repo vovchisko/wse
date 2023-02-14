@@ -2,7 +2,7 @@
  * @enum {string}
  */
 export const WSE_REASON = Object.freeze({
-  NO_REASON: 'wse.no-reason',
+  NO_REASON: '',
   CLIENTS_CONCURRENCY: 'wse.clients-concurrency',
   NOT_AUTHORIZED: 'wse.not-authorized',
   PROTOCOL_ERR: 'wse.protocol-error',

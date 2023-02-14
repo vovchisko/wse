@@ -30,16 +30,16 @@
   },
   "homepage": "https://github.com/vovchisko/wse#readme",
   "dependencies": {
-    "a-signal": "^2.1.1",
-    "eventemitter3": "^4.0.7",
-    "isomorphic-ws": "^4.0.1",
-    "ws": "^8.8.1"
+    "a-signal": "^2.2.1",
+    "eventemitter3": "^5.0.0",
+    "isomorphic-ws": "^5.0.0",
+    "ws": "^8.12.1"
   },
   "devDependencies": {
-    "test-a-bit": "^1.0.0"
+    "test-a-bit": "^1.1.1"
   },
   "optionalDependencies": {
-    "bufferutil": "^4.0.6",
-    "utf-8-validate": "^5.0.9"
+    "bufferutil": "^4.0.7",
+    "utf-8-validate": "^6.0.2"
   }
 }

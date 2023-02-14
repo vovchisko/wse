@@ -209,9 +209,9 @@ export class WseServer {
       conn.ws_conn.on('close', (code, reason) => {
         if (conn.cid && this.clients.has(conn.cid)) {
           const client = this.clients.get(conn.cid)
-          client._conn_drop(conn.conn_id)
+          client._conn_drop(conn.conn_id, reason)
         } else {
-          this.disconnected.emit(conn, code, reason)
+          this.disconnected.emit(conn, code, String(reason))
         }
       })
 
@@ -442,15 +442,15 @@ export class WseServer {
   /**
    * Drop client with specific ID.
    * @param {String} id client ID
-   * @param {WSE_REASON} [reason] WSE_REASON
+   * @param {WSE_REASON|String|Buffer} [reason] WSE_REASON
    */
   dropClient (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
 
     const client = this.clients.get(id)
 
-    if (client.conns.size) client.drop()
-    this.left.emit(client, 1000, reason)
+    if (client.conns.size) client.drop(reason)
+    this.left.emit(client, 1000, String(reason))
 
     this.clients.delete(client.cid)
   }
@@ -505,7 +505,7 @@ class WseIdentity {
   /**
    * Drop connection by it's ID.
    * @param {String} id
-   * @param {WSE_REASON} [reason]
+   * @param {WSE_REASON|String} [reason]
    * @private
    */
   _conn_drop (id, reason = WSE_REASON.NO_REASON) {
@@ -521,7 +521,7 @@ class WseIdentity {
 
     this.conns.delete(id)
 
-    this.server.disconnected.emit(conn, 1000, reason)
+    this.server.disconnected.emit(conn, 1000, String(reason))
 
     if (this.conns.size === 0) {
       this.server.dropClient(this.cid, reason)
