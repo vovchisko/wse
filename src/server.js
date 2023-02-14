@@ -137,12 +137,12 @@ export class WseServer {
     this._rps = new Map()
 
     this.when = {
-      ignored: this.ignored.subscriber(),
-      joined: this.joined.subscriber(),
-      left: this.left.subscriber(),
-      connected: this.connected.subscriber(),
-      disconnected: this.disconnected.subscriber(),
-      error: this.error.subscriber(),
+      ignored: this.ignored.extractOn(),
+      joined: this.joined.extractOn(),
+      left: this.left.extractOn(),
+      connected: this.connected.extractOn(),
+      disconnected: this.disconnected.extractOn(),
+      error: this.error.extractOn(),
     }
 
     /**
@@ -287,7 +287,6 @@ export class WseServer {
         payload: result,
         stamp: { success: true },
       }))
-
     }
 
     rp_wrap().catch((err) => {
@@ -412,7 +411,6 @@ export class WseServer {
     if (!client) {
       wasNewIdentity = true
       client = new WseIdentity({
-        identity: conn.identity,
         meta: conn.meta,
         cid,
       }, this)
@@ -480,7 +478,6 @@ class WseIdentity {
     this.cid = cid
     this.conns = new Map()
     this.meta = meta
-    this.identity = identity
 
     Object.defineProperty(this, 'server', { enumerable: false, value: server })
   }
