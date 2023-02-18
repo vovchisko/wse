@@ -90,6 +90,57 @@ export class WseServer {
    */
 
   /**
+   * handler for client connection
+   *
+   * @callback WseServer.handleConnected
+   * @param {WseConnection} conn presented by user
+   */
+
+  /**
+   * handle for client join (first connection)
+   *
+   * @callback WseServer.handleJoined
+   * @param {WseIdentity} identity user identiry
+   * @param {*} meta of user identiry - anything thta could be used as a token
+   */
+
+
+  /**
+   * handle ignored message on the channel
+   *
+   * @callback WseServer.handleIgnored
+   * @param {WseConnection} conn
+   * @param {String} type
+   * @param {*} payload
+   */
+
+  /**
+   * handle identiry left
+   *
+   * @callback WseServer.handleLeft
+   * @param {WseIdentity} identity
+   * @param {Number} code
+   * @param {String|WSE_REASON} reason
+   */
+
+  /**
+   * handle identiry disconnect
+   *
+   * @callback WseServer.handleDisconnected
+   * @param {WseConnection} connection
+   * @param {Number} code
+   * @param {String|WSE_REASON} reason
+   */
+
+  /**
+   * handle error
+   *
+   * @callback WseServer.handleError
+   * @param {WseError} error
+   * @param {WseConnection} connection
+   */
+
+  /**
    * WseServer class.
    *
    * @param {Object}    options see https://github.com/websockets/ws/#readme.
@@ -127,22 +178,66 @@ export class WseServer {
     this.ws = null
     this.channel = new EE()
 
-    this.ignored = new Signal()
     this.joined = new Signal()
     this.left = new Signal()
     this.connected = new Signal()
     this.disconnected = new Signal()
+    this.ignored = new Signal()
     this.error = new Signal()
 
     this._rps = new Map()
 
     this.when = {
-      ignored: this.ignored.extractOn(),
-      joined: this.joined.extractOn(),
-      left: this.left.extractOn(),
-      connected: this.connected.extractOn(),
-      disconnected: this.disconnected.extractOn(),
-      error: this.error.extractOn(),
+
+      /**
+       * Fires when user joins the server (firts live connection).
+       *
+       * @param {WseServer.handleJoined} h
+       * @returns {import('a-signal/src/bind.js')}
+       */
+      joined: h => this.joined.on(h),
+
+      /**
+       * Fires when user connected.
+       *
+       * @param {WseServer.handleConnected} h
+       * @returns {import('a-signal/src/bind.js')}
+       */
+
+      connected: h => this.connected.on(h),
+
+      /**
+       * Fires when user left (last connection closed).
+       *
+       * @param {WseServer.handleLeft} h
+       * @returns {import('a-signal/src/bind.js')}
+       */
+      left: h => this.left.on(h),
+
+      /**
+       * Fires when client connection closed.
+       *
+       * @param {WseServer.handleDisconnected} h
+       * @returns {import('a-signal/src/bind.js')}
+       */
+      disconnected: h => this.disconnected.on(h),
+
+      /**
+       * Fires when user message is ignored.
+       *
+       * @param {WseServer.handleIgnored} h
+       * @returns {import('a-signal/src/bind.js')}
+       */
+      ignored: h => this.ignored.on(h),
+
+      /**
+       * Fires when client connection closed.
+       *
+       * @param {WseServer.handleError} h
+       * @returns {import('a-signal/src/bind.js')}
+       */
+
+      error: h => this.error.on(h),
     }
 
     /**
