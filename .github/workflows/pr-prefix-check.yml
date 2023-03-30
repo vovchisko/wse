@@ -2,7 +2,7 @@ name: Pull Request Prefix Check
 
 on:
   pull_request:
-    types: [ opened, edited, synchronize ]
+    types: [ opened, edited ]
 
 jobs:
   check_prefix:
