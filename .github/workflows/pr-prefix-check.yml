@@ -16,7 +16,7 @@ jobs:
         run: |
           set -e
           
-          PREFIXES=("major:" "breaking:" "feat:" "feature:" "fix:" "hotfix:" "patch:")
+          PREFIXES=("major" "breaking" "feat" "feature" "fix" "hotfix" "patch")
           
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_PREFIX=$(echo "${PR_TITLE}" | cut -d ':' -f 1)
