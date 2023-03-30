@@ -1,9 +1,7 @@
 name: Pull Request Prefix Check
-
 on:
   pull_request:
-    types: [ opened, edited ]
-
+    types: [ opened, edited, synchronize ]
 jobs:
   check_prefix:
     runs-on: ubuntu-latest
