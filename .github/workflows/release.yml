@@ -24,9 +24,9 @@ jobs:
           
           VERSION=$(npm version --no-git-tag-version)
           PR_TITLE="${{ github.event.pull_request.title }}"
-          
+
           echo "${PR_TITLE}"
-          
+
           if [[ "$PR_TITLE" =~ ^major:|^breaking: ]]; then
             npm version major
           elif [[ "$PR_TITLE" =~ ^feat:|^feature: ]]; then
