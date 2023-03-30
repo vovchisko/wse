@@ -2,8 +2,8 @@ name: Bump & Publish
 
 on:
   pull_request:
-    types: [closed]
-    branches: [main]
+    types: [ closed ]
+    branches: [ main ]
 
 jobs:
   version_and_publish:
@@ -20,12 +20,13 @@ jobs:
       - name: Bump Version
         run: |
           VERSION=$(npm version --no-git-tag-version)
-          PR_TITLE=$(jq --raw-output .pull_request.title "$GITHUB_EVENT_PATH")
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          echo "${PR_TITLE}"
           if [[ "$PR_TITLE" =~ ^major:|^breaking: ]]; then
             npm version major
           elif [[ "$PR_TITLE" =~ ^feat:|^feature: ]]; then
             npm version minor
-          elif [[ "$PR_TITLE" =~ ^fix:|^hotfix: ]]; then
+          elif [[ "$PR_TITLE" =~ ^fix:|^hotfix:|^patch: ]]; then
             npm version patch
           else
             echo "Error: Pull request title must start with one of the following prefixes: 'major:', 'breaking:', 'feat:', 'feature:', 'fix:', 'hotfix:'"
@@ -33,8 +34,8 @@ jobs:
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-     # - name: Publish to npm
-     #   run: npm publish
-     #   if: success()
-     #   env:
-     #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # - name: Publish to npm
+      #   run: npm publish
+      #   if: success()
+      #   env:
+      #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
