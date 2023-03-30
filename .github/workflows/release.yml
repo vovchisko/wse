@@ -1,4 +1,4 @@
-name: Bump & Publish
+name: Bump Version & Publish
 
 on:
   pull_request:
