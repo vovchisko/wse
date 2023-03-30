@@ -26,6 +26,9 @@ jobs:
             npm version minor
           elif [[ "$PR_TITLE" =~ ^fix:|^hotfix: ]]; then
             npm version patch
+          else
+            echo "Error: Pull request title must start with one of the following prefixes: 'major:', 'breaking:', 'feat:', 'feature:', 'fix:', 'hotfix:'"
+            exit 1
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
