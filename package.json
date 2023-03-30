@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vovchisko/wse.git"
+    "url": "git+https:///wse.git"
   },
   "keywords": [
     "websoket",
@@ -23,7 +23,7 @@
     "ws-auth",
     "ws-protocol"
   ],
-  "author": "Vladimir Ishenko <vovchisko@gmail.com>",
+  "author": "github.com/vovchisko",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/vovchisko/wse/issues"
