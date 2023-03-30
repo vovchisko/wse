@@ -1,17 +1,27 @@
-- name: Check Pull Request Prefix
-  env:
-    PR_NUMBER: ${{ github.event.number }}
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    GITHUB_API_URL: ${{ github.event.repository.url }}/api/v3
-  run: |
-    set -e
+name: Pull Request Prefix Check
 
-    PREFIXES=("major:" "breaking:" "feat:" "feature:" "fix:" "hotfix:")
+on:
+  pull_request:
+    types: [ opened, edited, synchronize ]
 
-    PR_TITLE=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" | jq -r '.title')
-    PR_PREFIX=$(echo "${PR_TITLE}" | cut -d ':' -f 1)
-
-    if ! [[ " ${PREFIXES[@]} " =~ " ${PR_PREFIX} " ]]; then
-      echo "Error: Pull request title must start with one of the following prefixes: ${PREFIXES[*]}" >&2
-      exit 1
-    fi
+jobs:
+  check_prefix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Pull Request Prefix
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_API_URL: ${{ github.event.repository.url }}/api/v3
+        run: |
+          set -e
+          
+          PREFIXES=("major:" "breaking:" "feat:" "feature:" "fix:" "hotfix:")
+          
+          PR_TITLE=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" | jq -r '.title')
+          PR_PREFIX=$(echo "${PR_TITLE}" | cut -d ':' -f 1)
+          
+          if ! [[ " ${PREFIXES[@]} " =~ " ${PR_PREFIX} " ]]; then
+            echo "Error: Pull request title must start with one of the following prefixes: ${PREFIXES[*]}" >&2
+            exit 1
+          fi
