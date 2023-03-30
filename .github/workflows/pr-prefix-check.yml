@@ -8,8 +8,8 @@ jobs:
   check_prefix:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Prefix
-        uses: unsplash/github-action-prefix-check@v1.0.1
+      - name: Check Pull Request Prefix
+        uses: ramonsnir/gh-action-pr-title@1.0.0
         with:
-          prefix-list: 'major:,breaking:,feat:,feature:,fix:,hotfix:'
-          ignore-case: 'true'
+          pattern: '^(major|breaking|feat|feature|fix|hotfix):'
+          error-message: 'Invalid pull request title. The title must start with one of the following prefixes: major:, breaking:, feat:, feature:, fix:, or hotfix:'
