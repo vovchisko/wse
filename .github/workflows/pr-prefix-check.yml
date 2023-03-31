@@ -5,11 +5,12 @@ on:
     types: [ opened, edited ]
 
 jobs:
-  check_prefix:
+  check-prefix:
+    name: Check PR Prefix
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == false
     steps:
-      - name: Check Pull Request Prefix
+      - name: Check PR Prefix
         run: |
           set -e
           
