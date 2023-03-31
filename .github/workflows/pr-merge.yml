@@ -49,6 +49,13 @@ jobs:
     needs: bump_version
     if: needs.bump_version.result == 'success'
     steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+      - name: Install Dependencies
+        run: npm ci
       - name: Publish to npm
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NODE_AUTH_TOKEN  }}" >> ~/.npmrc
