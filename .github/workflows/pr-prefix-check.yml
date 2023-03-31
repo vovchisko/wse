@@ -10,10 +10,6 @@ jobs:
     if: github.event.pull_request.merged == false
     steps:
       - name: Check Pull Request Prefix
-        env:
-          PR_NUMBER: ${{ github.event.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_API_URL: ${{ github.event.repository.url }}/api/v3
         run: |
           set -e
           
