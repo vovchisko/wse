@@ -1,4 +1,4 @@
-name: Bump & Publish
+name: Bump Version & Publish
 
 on:
   pull_request:
@@ -34,7 +34,7 @@ jobs:
           elif [[ "$PR_TITLE" =~ ^fix:|^hotfix:|^patch: ]]; then
             npm version patch
           else
-            echo "Error: Pull request title must start with one of the following prefixes: 'major:', 'breaking:', 'feat:', 'feature:', 'fix:', 'hotfix:'"
+            echo "Error: Pull request title must start with one of the following prefixes: 'major:', 'breaking:', 'feat:', 'feature:', 'fix:', 'hotfix:', 'patch:'"
             exit 1
           fi
           
