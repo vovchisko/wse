@@ -1,4 +1,4 @@
-name: Pull Request Prefix Check
+name: RP Prefix Check
 
 on:
   pull_request:
