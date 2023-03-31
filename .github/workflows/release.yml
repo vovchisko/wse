@@ -37,6 +37,8 @@ jobs:
             echo "Error: Pull request title must start with one of the following prefixes: 'major:', 'breaking:', 'feat:', 'feature:', 'fix:', 'hotfix:'"
             exit 1
           fi
+          
+          git push --follow-tags
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN  }}
       - name: Authenticate with npm
