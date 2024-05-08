@@ -170,6 +170,7 @@ export class WseServer {
   }) {
     if (!identify) throw new WseError(WSE_ERROR.IDENTIFY_HANDLER_MISSING)
 
+    /** @type {Map<string, WseIdentity>} */
     this.clients = new Map()
     this.protocol = protocol || new WseJSON()
     this.identify = identify
@@ -527,9 +528,9 @@ export class WseServer {
    * @param payload
    */
   broadcast (type, payload) {
-    this.clients.forEach((client) => {
+    for (const client of this.clients.values()) {
       client.send(type, payload)
-    })
+    }
   }
 
   /**
@@ -627,11 +628,10 @@ class WseIdentity {
    * @returns {boolean} - true if connection was opened, false - if not.
    */
   send (type, payload) {
-    this.conns.forEach(conn => {
-      if (conn.readyState === WebSocket.OPEN) {
-        conn.send(type, payload)
-      }
-    })
+    for (const conn of this.conns.values()) {
+      if (conn.readyState !== WebSocket.OPEN) continue
+      conn.send(type, payload)
+    }
   }
 
   /**
@@ -639,8 +639,8 @@ class WseIdentity {
    * @param reason
    */
   drop (reason = WSE_REASON.NO_REASON) {
-    this.conns.forEach((val, key) => this._conn_drop(key, reason))
+    for (const key of this.conns.keys()) {
+      this._conn_drop(key, reason)
+    }
   }
 }
-
-

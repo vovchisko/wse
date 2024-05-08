@@ -196,7 +196,7 @@ export class WseClient {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack({ type, payload }))
     } else {
-      const err = new WseError(WSE_ERROR.CONNECTION_NOT_REAY)
+      const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
       this.error.emit(err)
       throw err
     }
@@ -257,7 +257,7 @@ export class WseClient {
         this._ws.send(this.protocol.pack({ type: rp, payload, stamp }))
       })
     } else {
-      const err = new WseError(WSE_ERROR.CONNECTION_NOT_REAY)
+      const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
       this.error.emit(err)
       throw err
     }
