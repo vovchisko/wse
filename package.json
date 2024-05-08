@@ -31,16 +31,16 @@
   "homepage": "https://github.com/vovchisko/wse#readme",
   "dependencies": {
     "a-signal": "^2.2.1",
-    "eventemitter3": "^5.0.0",
+    "eventemitter3": "^5.0.1",
     "isomorphic-ws": "^5.0.0",
-    "ws": "^8.12.1"
+    "ws": "^8.17.0"
   },
   "devDependencies": {
     "test-a-bit": "^1.1.1"
   },
   "optionalDependencies": {
-    "bufferutil": "^4.0.7",
-    "utf-8-validate": "^6.0.2"
+    "bufferutil": "^4.0.8",
+    "utf-8-validate": "^6.0.3"
   },
   "files": [
     "src/*.js"

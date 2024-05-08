@@ -31,7 +31,7 @@ export const WSE_ERROR = Object.freeze({
   CLIENT_ALREADY_CONNECTED: 'wse.client.already-connected',
   WS_CLIENT_ERROR: 'wse.client.ws-error',
   NOT_AUTHORIZED: 'wse.not-authorized',
-  CONNECTION_NOT_REAY: 'wse.client.not-ready',
+  CONNECTION_NOT_READY: 'wse.client.not-ready',
 
   //server
   NO_CLIENT_CONNECTION: 'wse.server.client.connection-missing',
