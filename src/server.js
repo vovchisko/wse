@@ -188,57 +188,69 @@ export class WseServer {
 
     this._rps = new Map()
 
+    /**
+     * Callback for handling when a new client joins.
+     * @callback JoinedCallback
+     * @param {WseIdentity} client - The client's identity instance
+     * @param {Object} meta - Additional metadata provided during connection
+     */
+
+    /**
+     * Callback for handling when a client connects.
+     * @callback ConnectedCallback
+     * @param {WseConnection} conn - The established connection instance
+     */
+
+    /**
+     * Callback for handling when a client leaves.
+     * @callback LeftCallback
+     * @param {WseIdentity} client - The client's identity instance
+     * @param {number} code - WebSocket close code
+     * @param {string} reason - Close reason description
+     */
+
+    /**
+     * Callback for handling when a connection closes.
+     * @callback DisconnectedCallback
+     * @param {WseConnection} conn - The connection that was closed
+     * @param {number} code - WebSocket close code
+     * @param {string} reason - Close reason description
+     */
+
+    /**
+     * Callback for handling unhandled messages.
+     * @callback IgnoredCallback
+     * @param {WseConnection} conn - The connection that sent the message
+     * @param {string} type - Message type identifier
+     * @param {*} payload - Message payload data
+     */
+
+    /**
+     * Callback for handling errors.
+     * @callback ErrorCallback
+     * @param {WseError} error - Error instance with details
+     * @param {WseConnection} conn - Connection where error occurred
+     */
+
+    /**
+     * Collection of signal binding functions extracted from their respective signals.
+     * Each property is a function that binds handlers to specific events.
+     * @type {{
+     *   joined: function(JoinedCallback): void,
+     *   connected: function(ConnectedCallback): void,
+     *   left: function(LeftCallback): void,
+     *   disconnected: function(DisconnectedCallback): void,
+     *   ignored: function(IgnoredCallback): void,
+     *   error: function(ErrorCallback): void
+     * }}
+     */
     this.when = {
-
-      /**
-       * Fires when user joins the server (firts live connection).
-       *
-       * @param {WseServer.handleJoined} h
-       * @returns {import('a-signal/src/bind.js')}
-       */
-      joined: h => this.joined.on(h),
-
-      /**
-       * Fires when user connected.
-       *
-       * @param {WseServer.handleConnected} h
-       * @returns {import('a-signal/src/bind.js')}
-       */
-
-      connected: h => this.connected.on(h),
-
-      /**
-       * Fires when user left (last connection closed).
-       *
-       * @param {WseServer.handleLeft} h
-       * @returns {import('a-signal/src/bind.js')}
-       */
-      left: h => this.left.on(h),
-
-      /**
-       * Fires when client connection closed.
-       *
-       * @param {WseServer.handleDisconnected} h
-       * @returns {import('a-signal/src/bind.js')}
-       */
-      disconnected: h => this.disconnected.on(h),
-
-      /**
-       * Fires when user message is ignored.
-       *
-       * @param {WseServer.handleIgnored} h
-       * @returns {import('a-signal/src/bind.js')}
-       */
-      ignored: h => this.ignored.on(h),
-
-      /**
-       * Fires when client connection closed.
-       *
-       * @param {WseServer.handleError} h
-       * @returns {import('a-signal/src/bind.js')}
-       */
-
-      error: h => this.error.on(h),
+      joined: this.joined.extractOn(),
+      connected: this.connected.extractOn(),
+      left: this.left.extractOn(),
+      disconnected: this.disconnected.extractOn(),
+      ignored: this.ignored.extractOn(),
+      error: this.error.extractOn(),
     }
 
     /**

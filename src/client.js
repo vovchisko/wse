@@ -32,6 +32,52 @@ export class WseClient {
     this.re = re
     this.re_t0 = 1000
     this.re_on_codes = [ 1005, 1006, 1011, 1012, 1013, 1014 ]
+
+    /**
+     * Callback for handling unhandled messages.
+     * @callback IgnoredCallback
+     * @param {string} type - Message type identifier
+     * @param {*} payload - Message payload data
+     * @param {string} stamp - Message stamp if present
+     */
+
+    /**
+     * Callback for handling ready state.
+     * @callback ReadyCallback
+     * @param {Object} payload - Server welcome payload
+     */
+
+    /**
+     * Callback for handling errors.
+     * @callback ErrorCallback
+     * @param {WseError} error - Error instance with details
+     */
+
+    /**
+     * Callback for handling connection closure.
+     * @callback ClosedCallback
+     * @param {number} code - WebSocket close code
+     * @param {string} reason - Close reason description
+     */
+
+    /**
+     * Callback for handling status updates.
+     * @callback UpdatedCallback
+     * @param {WSE_STATUS} status - New client status
+     */
+
+    /**
+     * Collection of signal binding functions extracted from their respective signals.
+     * Each property is a function similar to EventEmitter's "on" that binds handlers to specific events.
+     * @type {{
+     *   ignored: function(IgnoredCallback): void,
+     *   connected: function(): void,
+     *   ready: function(ReadyCallback): void,
+     *   error: function(ErrorCallback): void,
+     *   closed: function(ClosedCallback): void,
+     *   updated: function(UpdatedCallback): void
+     * }}
+     */
     this.when = {
       ignored: this.ignored.extractOn(),
       connected: this.connected.extractOn(),
