@@ -1,11 +1,10 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('swarm connect', async (success, fail) => {
-
   const total_clients = 20
   let points = 0
 
@@ -19,7 +18,7 @@ execute('swarm connect', async (success, fail) => {
   server.when.joined(type => {
     points++
     if (points === total_clients) {
-      success(`all ${ points } users connected`)
+      success(`all ${points} users connected`)
     }
   })
 
@@ -27,4 +26,3 @@ execute('swarm connect', async (success, fail) => {
     clients[i].connect(SECRET, { index: i })
   }
 })
-

@@ -50,7 +50,7 @@ export const WSE_ERROR = Object.freeze({
  * @param {Number} [len]
  * @returns {string}
  */
-export function make_stamp (len = 10) {
+export function make_stamp(len = 10) {
   let result = ''
   let i = 0
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
@@ -67,7 +67,7 @@ export class WseError extends Error {
    * @param {String} code
    * @param {Object} details
    */
-  constructor (code, details = {}) {
+  constructor(code, details = {}) {
     super(code)
     this.type = 'wse-error'
     this.code = code

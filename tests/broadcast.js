@@ -1,8 +1,8 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('only one connection per client', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
@@ -15,7 +15,7 @@ execute('only one connection per client', async (success, fail) => {
   const result = []
   const check_result = () => {
     if (result.length === 4) {
-      result.forEach(val => val !== '42' ? fail('broadcast failed') : null)
+      result.forEach(val => (val !== '42' ? fail('broadcast failed') : null))
       success('broadcast is correct')
     }
   }
@@ -47,7 +47,3 @@ execute('only one connection per client', async (success, fail) => {
 
   server.broadcast('broad-message', { test: '42' })
 })
-
-
-
-

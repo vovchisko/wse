@@ -1,488 +1,141 @@
-# WSE (WebSocket Enhancement)
-
-A WebSocket wrapper focused on managing authenticated users across multiple devices. WSE makes it easy to:
-- Handle multiple connections from the same user (e.g., mobile + desktop)
-- Implement authentication with built-in Challenge-Response system
-- Create custom WebSocket protocols with minimal boilerplate
-- Manage client identity and state across reconnections
+# WSE - WebSocket Everywhere!
 
 [![npm version](https://badge.fury.io/js/wse.svg)](https://badge.fury.io/js/wse)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Made in Ukraine](https://img.shields.io/badge/Made%20in%20Ukraine-❤️-0057B7?style=flat&labelColor=005BBB&color=FFD700)](https://x.com/sternenkofund)
 
-## Installation
+Oe "WebSocket Enhancement", if you wish.
+A lightweight WebSocket wrapper with authentication, RPC support, and multi-device messaging.
+
+
+## Features
+
+- **Any Authentication** - Challenge-response, anonymous, or token-based auth with secure handshake
+- **Cozy Messaging** - Simple send/receive with EventEmitter pattern and message broadcasting
+- **Per-user Connection Management** - Multiple devices per user with fine-grained message routing
+- **Auto-Reconnection** - Seamless reconnection with RPC state preservation and exponential backoff
+- **Custom Protocols** - Extensible message protocol system for specialized use cases
+
+## Quick Start
+
+### Installation
 
 ```bash
 npm install wse
 ```
 
-## Quick Start
-
-### Server Setup
+### Basic Server
 
 ```javascript
 import { WseServer } from 'wse'
 
-// Authentication handler
-function identify({ identity, meta, accept, refuse }) {
-  // Simple auth example
-  if (identity === 'your-secret-key') {
-    const clientId = 'user-123'
-    accept(clientId, { message: 'Welcome!' })
-  } else {
-    refuse()
-  }
+// Simple authentication - accept everyone
+function identify({ accept }) {
+  accept('user-' + Date.now())
 }
 
-// Create server instance
-const server = new WseServer({ 
-  port: 4200, 
-  identify,
-  connPerUser: 2  // Allow 2 connections per user
+const server = new WseServer({ port: 4200, identify })
+
+// Handle messages
+server.channel.on('chat', (conn, message) => {
+  console.log(`${conn.cid} says:`, message)
+  server.broadcast('chat', { user: conn.cid, message })
 })
 
-// Handle incoming messages
-server.channel.on('hello', (conn, data) => {
-  console.log(`Message from ${conn.cid}:`, data)
-  conn.send('welcome', { message: 'Hello back!' })
-})
-
-// Broadcast to all connected clients
-server.broadcast('announcement', { message: 'Server is ready!' })
-
-// Register Remote Procedure
-server.register('add', async (conn, { a, b }) => {
-  return a + b
-})
-
-// Handle events
-server.when.joined((client, meta) => {
-  console.log(`Client ${client.cid} joined with meta:`, meta)
-})
-
-server.when.error((error, conn) => {
-  console.error(`Error from ${conn?.cid}:`, error)
-})
+console.log('Server running on ws://localhost:4200')
 ```
 
-### Client Setup
+### Basic Client
 
 ```javascript
-import { WseClient, WSE_ERROR } from 'wse'
+import { WseClient } from 'wse'
 
-const client = new WseClient({ 
-  url: 'ws://localhost:4200',
-  tO: 30,  // 30 seconds timeout for RPC calls
-  re: true // Enable auto-reconnect
-})
+const client = new WseClient({ url: 'ws://localhost:4200' })
 
-// Connect with authentication
-try {
-  const welcomeData = await client.connect('your-secret-key', { 
-    clientData: 'optional metadata' 
-  })
-  console.log('Connected with welcome data:', welcomeData)
-} catch (error) {
-  console.error('Connection failed:', error)
-}
+// Connect and send message
+await client.connect()
+client.send('chat', 'Hello everyone!')
 
-// Listen for server messages
-client.channel.on('welcome', (data) => {
-  console.log('Server says:', data.message)
-})
-
-// Send messages
-client.send('hello', { message: 'Hello server!' })
-
-// Make RPC calls
-try {
-  const result = await client.call('add', { a: 5, b: 3 })
-  console.log('5 + 3 =', result) // Output: 8
-} catch (error) {
-  if (error.code === WSE_ERROR.RP_TIMEOUT) {
-    console.error('RPC call timed out')
-  } else if (error.code === WSE_ERROR.RP_NOT_REGISTERED) {
-    console.error('RPC not found on server')
-  } else {
-    console.error('RPC failed:', error)
-  }
-}
-
-// Handle connection events
-client.when.ready((welcomeData) => {
-  console.log('Connected and authenticated!', welcomeData)
-})
-
-client.when.error((error) => {
-  console.error('Connection error:', error)
-})
-
-client.when.closed((code, reason) => {
-  console.log(`Connection closed: ${code} - ${reason}`)
+// Listen for messages
+client.channel.on('chat', ({ user, message }) => {
+  console.log(`${user}: ${message}`)
 })
 ```
 
-## Advanced Features
+## API Reference
 
-### Challenge-Response Authentication (CRA)
+### Server
 
-Challenge-Response Authentication provides a secure way to authenticate clients without sending passwords directly. Here's how it works:
+- **`server.clients`** - Map of all connected users (cid → WseIdentity)
+- **`server.channel`** - EventEmitter for user messages
+- **`server.protocol`** - Message protocol handler
+- **`server.connPerUser`** - Max connections per user
+- **`server.tO`** - RPC timeout in seconds
+- **`server.broadcast(type, payload)`** - Send to all connected users
+- **`server.send(cid, type, payload)`** - Send to specific user (all devices)
+- **`server.register(rp, handler)`** - Register RPC procedure
+- **`server.unregister(rp)`** - Remove RPC procedure
+- **`server.dropClient(cid, reason)`** - Disconnect user
+- **`server.useChallenge(generator)`** - Enable challenge-response auth
+- **`server.when.joined(client, meta)`** - New user authenticated
+- **`server.when.left(client, code, reason)`** - User disconnected
+- **`server.when.connected(conn)`** - New device connected
+- **`server.when.disconnected(conn, code, reason)`** - Device disconnected
+- **`server.when.error(error, conn)`** - Error occurred
+- **`server.when.ignored(conn, type, payload)`** - Unhandled message
 
-1. Client initiates connection with identity info
-2. Server generates a unique challenge
-3. Client receives challenge and computes response using a secret
-4. Server validates the response
-5. If valid, connection is authenticated
+### Client (WseIdentity)
 
-Example implementation:
+- **`client.cid`** - User identifier
+- **`client.conns`** - Map of user's connections (conn_id → WseConnection)
+- **`client.meta`** - Client-sent metadata from FIRST connection
+- **`client.send(type, payload)`** - Send to all user's devices
+- **`client.drop(reason)`** - Disconnect all user's devices
 
-```javascript
-// Server setup
-server.useChallenge((identity, meta, quest, refuse) => {
-  // Generate a unique challenge
-  const challenge = {
-    timestamp: Date.now(),
-    nonce: crypto.randomBytes(16).toString('hex')
-  }
-  
-  if (!isValidUser(identity)) {
-    refuse()
-    return
-  }
-  
-  quest(challenge)
-})
+### Connection (WseConnection)
 
-// Server identity handler
-function identify({ identity, meta, challenge, accept, refuse }) {
-  if (!challenge) {
-    refuse()
-    return
-  }
+- **`conn.cid`** - User identifier (same as conn.client.cid)
+- **`conn.conn_id`** - Unique connection identifier
+- **`conn.identity`** - Original auth data (tokens, etc.)
+- **`conn.meta`** - Client-sent metadata from THIS connection
+- **`conn.client`** - Reference to WseIdentity
+- **`conn.remote_addr`** - Client IP address
+- **`conn.send(type, payload)`** - Send to this device only
+- **`conn.call(rp, payload)`** - Call RPC on this client
+- **`conn.drop(reason)`** - Disconnect this device
 
-  const { quest, response } = challenge
-  
-  // Validate response
-  const expectedResponse = crypto
-    .createHmac('sha256', getClientSecret(identity))
-    .update(quest.timestamp + quest.nonce)
-    .digest('hex')
-    
-  if (response === expectedResponse) {
-    accept(identity, { message: 'Welcome!' })
-  } else {
-    refuse()
-  }
-}
+### WSE Client
 
-// Client setup
-client.challenge((quest, solve) => {
-  // Compute response using HMAC
-  const response = crypto
-    .createHmac('sha256', CLIENT_SECRET)
-    .update(quest.timestamp + quest.nonce)
-    .digest('hex')
-  
-  solve(response)
-})
-```
+- **`client.channel`** - EventEmitter for messages
+- **`client.status`** - Connection status (WSE_STATUS)
+- **`client.cid`** - User ID (after connection)
+- **`client.connect(identity, meta)`** - Connect and authenticate
+- **`client.send(type, payload)`** - Send message to server
+- **`client.call(rp, payload)`** - Call server RPC
+- **`client.register(rp, handler)`** - Register client RPC
+- **`client.unregister(rp)`** - Remove client RPC
+- **`client.challenge(handler)`** - Set challenge-response handler
+- **`client.disconnect()`** - Close connection
+- **`client.when.ready(welcomeData)`** - Connected and authenticated
+- **`client.when.closed(code, reason)`** - Connection closed
+- **`client.when.error(error)`** - Error occurred
+- **`client.when.updated(status)`** - Status changed
 
-### Integration with Existing HTTP Servers
+### Constants
 
-#### Express Integration
+- **WSE_STATUS** - IDLE, CONNECTING, RE_CONNECTING, READY, OFFLINE
+- **WSE_ERROR** - CONNECTION_NOT_READY, RP_TIMEOUT, RP_NOT_REGISTERED, RP_EXECUTION_FAILED, RP_DISCONNECT
+- **WSE_REASON** - BY_CLIENT, BY_SERVER, NOT_AUTHORIZED, PROTOCOL_ERR, CLIENTS_CONCURRENCY
 
-```javascript
-import express from 'express'
-import { createServer } from 'http'
-import { WseServer, WSE_ERROR } from 'wse'
+## Documentation
 
-const app = express()
-const httpServer = createServer(app)
-
-// Create WSE server with noServer option
-const wseServer = new WseServer({ 
-  noServer: true,  // Important: let Express handle the HTTP server
-  identify: yourIdentifyHandler
-})
-
-// Handle HTTP routes
-app.get('/', (req, res) => {
-  res.send('Express server with WSE')
-})
-
-// Handle WebSocket upgrade
-httpServer.on('upgrade', (request, socket, head) => {
-  // You can filter by path or add custom validation
-  if (request.url === '/ws') {
-    try {
-      wseServer.ws.handleUpgrade(request, socket, head, (ws) => {
-        wseServer.ws.emit('connection', ws, request)
-      })
-    } catch (error) {
-      console.error('Upgrade failed:', error)
-      socket.destroy()
-    }
-  } else {
-    socket.destroy()
-  }
-})
-
-// Error handling
-wseServer.when.error((error, conn) => {
-  console.error(`WebSocket error: ${error.code}`, error.details)
-  if (conn) {
-    conn.send('error', { message: 'Internal server error' })
-  }
-})
-
-// Start server
-httpServer.listen(3000, () => {
-  console.log('Server running on port 3000')
-})
-```
-
-#### Fastify Integration
-
-```javascript
-import Fastify from 'fastify'
-import { WseServer, WSE_ERROR } from 'wse'
-
-const fastify = Fastify()
-const wseServer = new WseServer({ 
-  noServer: true,
-  identify: yourIdentifyHandler
-})
-
-// Handle HTTP routes
-fastify.get('/', async (request, reply) => {
-  return { hello: 'world' }
-})
-
-// Handle WebSocket upgrade
-fastify.server.on('upgrade', (request, socket, head) => {
-  if (request.url === '/ws') {
-    try {
-      wseServer.ws.handleUpgrade(request, socket, head, (ws) => {
-        wseServer.ws.emit('connection', ws, request)
-      })
-    } catch (error) {
-      console.error('Upgrade failed:', error)
-      socket.destroy()
-    }
-  } else {
-    socket.destroy()
-  }
-})
-
-// Error handling
-wseServer.when.error((error, conn) => {
-  console.error(`WebSocket error: ${error.code}`, error.details)
-})
-
-// Start server
-fastify.listen({ port: 3000 }, (err) => {
-  if (err) throw err
-  console.log('Server running on port 3000')
-})
-```
-
-### Custom Protocol
-
-```javascript
-class CustomProtocol {
-  constructor() {
-    // Protocol name used in WebSocket handshake
-    this.name = 'custom-protocol'
-    
-    // Required internal message types
-    this.internal_types = Object.freeze({
-      hi: '~wse:hi',         // Initial client greeting
-      challenge: '~wse:challenge', // CRA challenge/response
-      welcome: '~wse:welcome',     // Server welcome after auth
-      call: '~wse:call',          // RPC marker
-    })
-  }
-
-  // Pack message into [type, payload, stamp] format
-  pack({ type, payload = undefined, stamp = undefined }) {
-    return JSON.stringify([type, payload, stamp])
-  }
-
-  // Unpack message, returns [type, payload, stamp]
-  unpack(encoded) {
-    return JSON.parse(encoded)
-  }
-}
-
-// Use custom protocol in server
-const server = new WseServer({ 
-  port: 4200, 
-  identify,
-  protocol: new CustomProtocol()
-})
-
-// Use same protocol in client
-const client = new WseClient({
-  url: 'ws://localhost:4200',
-  protocol: new CustomProtocol()
-})
-```
-
-
-## Error Handling
-
-WSE provides specific error types for different scenarios:
-
-```javascript
-import { WseClient, WSE_ERROR, WSE_REASON } from 'wse'
-
-// Client-side error handling
-client.when.error((error) => {
-  switch (error.code) {
-    case WSE_ERROR.CONNECTION_NOT_READY:
-      console.error('Connection not established')
-      break
-    case WSE_ERROR.RP_TIMEOUT:
-      console.error('Remote procedure call timed out')
-      break
-    case WSE_ERROR.RP_NOT_REGISTERED:
-      console.error('Remote procedure not found')
-      break
-    case WSE_ERROR.RP_EXECUTION_FAILED:
-      console.error('Remote procedure failed:', error.details)
-      break
-    case WSE_ERROR.WS_CLIENT_ERROR:
-      console.error('WebSocket error:', error.details)
-      break
-  }
-})
-
-// Server-side error handling
-server.when.error((error, conn) => {
-  switch (error.code) {
-    case WSE_ERROR.MESSAGE_PROCESSING_ERROR:
-      console.error(`Invalid message from ${conn.cid}:`, error.details)
-      break
-    case WSE_ERROR.PROTOCOL_VIOLATION:
-      console.error(`Protocol violation from ${conn.cid}:`, error.details)
-      break
-    case WSE_ERROR.CONNECTION_ERROR:
-      console.error('WebSocket connection error:', error.details)
-      break
-    case WSE_ERROR.RP_EXECUTION_FAILED:
-      console.error('RPC execution failed:', error.details)
-      break
-  }
-})
-
-// Connection closure handling
-client.when.closed((code, reason) => {
-  switch (reason) {
-    case WSE_REASON.NOT_AUTHORIZED:
-      console.log('Authentication failed')
-      break
-    case WSE_REASON.PROTOCOL_ERR:
-      console.log('Protocol error')
-      break
-    case WSE_REASON.CLIENTS_CONCURRENCY:
-      console.log('Too many connections')
-      break
-    case WSE_REASON.BY_CLIENT:
-      console.log('Client closed connection')
-      break
-    case WSE_REASON.BY_SERVER:
-      console.log('Server closed connection')
-      break
-  }
-})
-```
-
-## Performance Optimization
-
-`wse` uses `ws` under the hood, which supports optional binary addons for better performance:
-
-```bash
-# Efficient frame masking/unmasking
-npm install --save-optional bufferutil
-
-# Fast UTF-8 validation
-npm install --save-optional utf-8-validate
-
-```
-
-
-## Broadcasting Messages
-
-WSE provides several ways to broadcast messages:
-
-```javascript
-// Send to ALL connected clients
-server.broadcast('announcement', { message: 'Server maintenance in 5 minutes' })
-
-// Send to specific client (all their connections)
-server.send(clientId, 'personal-message', { message: 'Just for you' })
-
-// Send to current connection only
-connection.send('connection-specific', { message: 'Just for this device' })
-
-// Example: Broadcast to everyone except sender
-server.channel.on('chat-message', (conn, message) => {
-  for (const client of server.clients.values()) {
-    if (client.cid !== conn.cid) {
-      client.send('chat-message', message)
-    }
-  }
-})
-
-// Example: Handle broadcast messages on client
-client.channel.on('announcement', (payload) => {
-  console.log('Server announcement:', payload.message)
-})
-```
-
-### Multi-Device Messaging
-
-When a user is connected from multiple devices (controlled by `connPerUser`):
-
-```javascript
-// Server setup
-const server = new WseServer({ 
-  identify,
-  connPerUser: 2  // Allow 2 connections per user
-})
-
-// Send to ALL connections of a specific user
-server.send(userId, 'sync-data', { updated: true })
-
-// Send to SPECIFIC connection only
-server.channel.on('device-settings', (conn, settings) => {
-  // conn.send() only sends to that specific connection
-  conn.send('settings-updated', { confirmed: true })
-})
-
-// Track connections per user
-server.when.connected((conn) => {
-  console.log(`New connection for user ${conn.cid}`)
-  console.log(`Total connections: ${server.clients.get(conn.cid).conns.size}`)
-})
-```
-
-These modules are binary addons that improve certain operations. Read more about performance optimization in the [ws documentation](https://github.com/websockets/ws#opt-in-for-performance).
-
-## API Documentation
-
-> 🚧 **Documentation is in progress**
->
-> For now, please refer to:
-> - Code examples in this README
-> - JSDoc comments in the source code
-> - Test files for more usage examples
->
-> Wiki and detailed API documentation are coming soon!
-
-
-## License
-
-[MIT License](LICENSE) - feel free to use this project commercially.
+- **[Auth](docs/auth.md)** - Anonymous, login/password, and token-based auth
+- **[RPC](docs/rpc.md)** - Bidirectional procedure calls
+- **[Broadcast](docs/broadcast.md)** - Broadcasting and multi-device messaging
+- **[Errors](docs/errors.md)** - Error codes and recovery patterns
+- **[HTTP](docs/http.md)** - Integrate with Express/HTTP servers
+- **[Protocol](docs/protocol.md)** - Implement custom message protocols
 
 ---
-With love ❤️ from Ukraine 🇺🇦
+
+Russian warship - go fuck yourself! 🖕

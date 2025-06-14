@@ -3,8 +3,8 @@ import { execute } from 'test-a-bit'
 import { createServer } from 'http'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('multiple servers sharing a single http/s server', async (success, fail) => {
   const server1 = new WseServer({ identify, noServer: true })
@@ -26,21 +26,20 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
     reject_ignored: null,
   }
 
-  const markGoal = (goal_key) => {
+  const markGoal = goal_key => {
     goals[goal_key] = true
     if (Object.keys(goals).every(v => goals[v] === true)) success('all correct')
   }
 
-
-  http.on('upgrade', function upgrade (request, socket, head) {
+  http.on('upgrade', function upgrade(request, socket, head) {
     const pathname = request.url
     if (pathname === '/foo') {
-      server1.ws.handleUpgrade(request, socket, head, function done (ws) {
+      server1.ws.handleUpgrade(request, socket, head, function done(ws) {
         markGoal('s1_upgraded')
         server1.ws.emit('connection', ws, request)
       })
     } else if (pathname === '/bar') {
-      server2.ws.handleUpgrade(request, socket, head, function done (ws) {
+      server2.ws.handleUpgrade(request, socket, head, function done(ws) {
         server2.ws.emit('connection', ws, request)
         markGoal('s2_upgraded')
       })
@@ -51,7 +50,6 @@ execute('multiple servers sharing a single http/s server', async (success, fail)
       fail('this is wrong')
     }
   })
-
 
   server1.when.joined((conn, meta) => {
     if (meta.user_id === 1 && conn.cid === 1) {

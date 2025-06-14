@@ -1,9 +1,15 @@
-import EventEmitter from 'eventemitter3'
-import Signal       from 'a-signal'
-import WS           from 'isomorphic-ws'
+/**
+ * @import { WseError, WSE_ERROR, WSE_REASON, WSE_STATUS } from './common.js'
+ * @import { WseJSON } from './protocol.js'
+ */
 
-import { WseJSON }                                                 from './protocol.js'
+import { EventEmitter } from 'tseep'
+import Signal from 'a-signal'
+import WS from 'isomorphic-ws'
+
+import { WseJSON } from './protocol.js'
 import { make_stamp, WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
+import { RpcManager } from './rpc-man.js'
 
 export class WseClient {
   /**
@@ -14,7 +20,7 @@ export class WseClient {
    * @param {Boolean} [options.re] - Reconnect In cause of 1006 code closure.
    * @param {WseJSON|Object} [options.protocol] - Message processor.
    */
-  constructor ({ url, tO = 20, protocol, re = false, ...ws_options }) {
+  constructor({ url, tO = 20, protocol, re = false, ...ws_options }) {
     this.protocol = protocol || new WseJSON()
     this.url = url
     this.ws_options = ws_options
@@ -31,7 +37,9 @@ export class WseClient {
     this.closed = new Signal()
     this.re = re
     this.re_t0 = 1000
-    this.re_on_codes = [ 1005, 1006, 1011, 1012, 1013, 1014 ]
+    this.re_on_codes = [1005, 1006, 1011, 1012, 1013, 1014]
+
+    this._rpcManager = new RpcManager()
 
     /**
      * Callback for handling unhandled messages.
@@ -92,7 +100,7 @@ export class WseClient {
     this._ws = null
   }
 
-  _update_status (status) {
+  _update_status(status) {
     this.updated.emit(status)
     this.status = status
   }
@@ -104,7 +112,7 @@ export class WseClient {
    * @returns {Promise<Object>}
    * @throws {WSE_ERROR}
    */
-  connect (identity = '', meta = {}) {
+  connect(identity = '', meta = {}) {
     if (this._ws) throw WSE_ERROR.CLIENT_ALREADY_CONNECTED
 
     this._update_status(WSE_STATUS.CONNECTING)
@@ -121,16 +129,15 @@ export class WseClient {
       this.connected.emit()
     }
 
-
-    const handleMessage = (message) => {
+    const handleMessage = message => {
       this._process_msg(message)
     }
 
-    const handlePreMessage = (message) => {
-      const [ type, payload ] = this.protocol.unpack(message.data)
+    const handlePreMessage = message => {
+      const [type, payload] = this.protocol.unpack(message.data)
       if (type === this.protocol.internal_types.challenge) {
         if (typeof this.challenge_solver === 'function') {
-          this.challenge_solver(payload, (solution) => {
+          this.challenge_solver(payload, solution => {
             this.send(this.protocol.internal_types.challenge, solution)
           })
           return
@@ -147,11 +154,11 @@ export class WseClient {
       }
     }
 
-    const handleError = (err) => {
+    const handleError = err => {
       this.error.emit(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
     }
 
-    const handleClose = (event) => {
+    const handleClose = event => {
       this.closed.emit(event.code, String(event.reason))
       this._update_status(WSE_STATUS.OFFLINE)
 
@@ -161,7 +168,7 @@ export class WseClient {
         _flushPromise()
       }
       if (this.re && this.re_on_codes.includes(event.code)) {
-        const in_s = this.re_t0 + (Math.random() * 1000)
+        const in_s = this.re_t0 + Math.random() * 1000
         this._update_status(WSE_STATUS.RE_CONNECTING)
         setTimeout(tryConnect, in_s)
       }
@@ -183,7 +190,7 @@ export class WseClient {
     })
   }
 
-  _wipe_ws () {
+  _wipe_ws() {
     this._ws.onopen = null
     this._ws.onmessage = null
     this._ws.onerror = null
@@ -192,27 +199,32 @@ export class WseClient {
   }
 
   /**
-   * Called when server asks for CRA auth.
+   * Challenge handler function for Challenge-Response Authentication.
+   * @callback ChallengeHandler
+   * @param {*} quest - Challenge data from server (can be any type)
+   * @param {function(*): void} solve - Function to call with the challenge solution
+   * @example
+   * // Simple math challenge
+   * client.challenge((quest, solve) => {
+   *   solve(quest.a + quest.b)
+   * })
    *
-   * @callback WseCraChallengerCb
-   * @param {*} quest - Any set of data
-   * @param {WseCraResolverFunction} solve - Function to call when answer is ready.
+   * // HMAC-based challenge
+   * client.challenge((quest, solve) => {
+   *   const response = crypto.createHmac('sha256', SECRET)
+   *     .update(quest.timestamp + quest.nonce)
+   *     .digest('hex')
+   *   solve(response)
+   * })
    */
 
   /**
-   * Call to send CRA answer.
-   *
-   * @function WseCraResolverFunction
-   * @param {*} answer - Asnwer on CRA quest
+   * Set challenge solver for Challenge-Response Authentication (CRA).
+   * The solver function will be called when the server sends a challenge.
+   * @param {ChallengeHandler} challenge_solver - Function to handle authentication challenges
+   * @throws {WseError} Throws WSE_ERROR.INVALID_CRA_HANDLER if solver is not a function
    */
-
-  /**
-   * Set function responsible or CRA challenge auth.
-   * Solver will accept CRA quest and resolver callback.
-   *
-   * @param {WseCraChallengerCb} challenge_solver
-   */
-  challenge (challenge_solver) {
+  challenge(challenge_solver) {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
     } else {
@@ -227,9 +239,72 @@ export class WseClient {
    * @return {boolean|void}
    * @private
    */
-  _process_msg (message) {
-    let [ type, payload, stamp ] = this.protocol.unpack(message.data)
+    _process_msg(message) {
+    let [type, payload, stamp] = this.protocol.unpack(message.data)
+    
+    // Handle RPC responses - direct callback execution
+    if (type === this.protocol.internal_types.response) {
+      if (this._rpcManager.handleResponse(stamp, payload, true)) return
+    }
+    if (type === this.protocol.internal_types.response_error) {
+      if (this._rpcManager.handleResponse(stamp, payload, false)) return
+    }
+    
+    // If stamp exists, it's an incoming RPC call from server
+    if (stamp) {
+      if (this._rpcManager.has(type)) {
+        return this._handle_incoming_call(type, payload, stamp)
+      } else {
+        // RPC not registered - send error response
+        this._ws.send(
+          this.protocol.pack({
+            type: this.protocol.internal_types.response_error,
+            payload: { code: WSE_ERROR.RP_NOT_REGISTERED },
+            stamp: stamp,
+          })
+        )
+        return
+      }
+    }
+    
+    // Only user messages go through channel
     return this.channel.emit(type, payload, stamp) || this.ignored.emit(type, payload, stamp)
+  }
+
+    _handle_incoming_call(type, payload, stamp) {
+    const procedure = this._rpcManager.get(type)
+
+    const rp_wrap = async () => {
+      const result = await procedure(payload)
+      this._ws.send(
+        this.protocol.pack({
+          type: this.protocol.internal_types.response,
+          payload: result,
+          stamp: stamp,
+        })
+      )
+    }
+
+    rp_wrap().catch(err => {
+      const errorPayload = RpcManager.normalizeError(err)
+
+      this._ws.send(
+        this.protocol.pack({
+          type: this.protocol.internal_types.response_error,
+          payload: errorPayload,
+          stamp: stamp,
+        })
+      )
+
+      this.error.emit(
+        new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
+          type,
+          payload,
+          stamp,
+          err,
+        })
+      )
+    })
   }
 
   /**
@@ -238,7 +313,7 @@ export class WseClient {
    * @param {String} type
    * @param {*} [payload]
    */
-  send (type, payload) {
+  send(type, payload) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack({ type, payload }))
     } else {
@@ -253,59 +328,76 @@ export class WseClient {
    *
    * @param {WSE_REASON|String} [reason]
    */
-  close (reason = WSE_REASON.BY_CLIENT) {
+  close(reason = WSE_REASON.BY_CLIENT) {
     if (this._ws) this._ws.close(1000, reason)
   }
 
   /**
-   * Send RP request to the server.
-   * @param rp - name of RP
-   * @param [payload] - payload
-   * @returns {Promise<*>}
+   * Send Remote Procedure Call request to the server.
+   * @param {string} rp - Name of the remote procedure to call
+   * @param {*} [payload] - Data to send with the RPC call
+   * @returns {Promise<*>} Promise that resolves with the RPC result
+   * @throws {WseError} Throws WseError with specific error codes:
+   *   - WSE_ERROR.RP_TIMEOUT: Call timed out
+   *   - WSE_ERROR.RP_NOT_REGISTERED: RPC not found on server
+   *   - WSE_ERROR.RP_EXECUTION_FAILED: Server-side error
+   *   - WSE_ERROR.RP_DISCONNECT: Connection lost during call
+   * @example
+   * // Basic RPC call
+   * const result = await client.call('add', { a: 5, b: 3 })
+   * console.log(result) // 8
+   *
+   * // Handle RPC errors
+   * try {
+   *   const data = await client.call('getUserData', { userId: 123 })
+   * } catch (error) {
+   *   if (error.code === WSE_ERROR.RP_TIMEOUT) {
+   *     console.log('Request timed out')
+   *   }
+   * }
    */
-  async call (rp, payload) {
-    if (!rp || typeof rp !== 'string') throw new Error('rp_name not a string')
+  async call(rp, payload) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
-      return new Promise((resolve, reject) => {
-        const stamp = [ this.protocol.internal_types.call, rp, make_stamp() ].join(':')
-
-        let timeout
-
-        const handler = (result, re_stamp) => {
-          if (re_stamp.success) {
-            if (timeout) clearTimeout(timeout)
-            closedBind.off()
-            resolve(result)
-          } else {
-            rejection(re_stamp)
-          }
-        }
-
-        const rejection = ({ code, details }) => {
-          if (timeout) clearTimeout(timeout)
-          this.channel.off(stamp, handler)
-          return reject(new WseError(code, details))
-        }
-
-        const closedBind = this.closed.once((code, reason) => {
-          rejection({ code: WSE_ERROR.RP_DISCONNECT, disconnected: { code, reason } })
-        })
-
-        this.channel.once(stamp, handler)
-
-        if (this.tO > 0) {
-          timeout = setTimeout(() => {
-            return rejection({ code: WSE_ERROR.RP_TIMEOUT })
-          }, this.tO * 1000)
-        }
-
-        // todo: should we pass tO to the server?
-        this._ws.send(this.protocol.pack({ type: rp, payload, stamp }))
-      })
+      return this._rpcManager.call(
+        this.protocol,
+        rp,
+        payload,
+        this.tO,
+        (data) => this._ws.send(data),
+        this.closed
+      )
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
       this.error.emit(err)
       throw err
     }
+  }
+
+  /**
+   * Register remote procedure that can be called by the server.
+   * @param {string} rp - Remote procedure name
+   * @param {Function} handler - Function to handle RPC calls from server
+   * @example
+   * // Basic RPC
+   * client.register('ping', (payload) => {
+   *   return 'pong'
+   * })
+   *
+   * // Async RPC
+   * client.register('processData', async (payload) => {
+   *   const result = await processData(payload)
+   *   return result
+   * })
+   */
+  register(rp, handler) {
+    this._rpcManager.register(rp, handler)
+  }
+
+  /**
+   * Unregister existing RP.
+   * @param {string} rp - RP name
+   */
+  unregister(rp) {
+    this._rpcManager.unregister(rp)
   }
 }

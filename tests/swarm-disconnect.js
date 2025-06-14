@@ -1,11 +1,10 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('swarm disconnect', async (success, fail) => {
-
   const total_clients = 20
   let points = 0
 
@@ -28,7 +27,7 @@ execute('swarm disconnect', async (success, fail) => {
       if (code === 1000 && reason === 'BECAUSE-OF-TEST') {
         points++
         if (points === total_clients) {
-          success(`all ${ points } users disconnected`)
+          success(`all ${points} users disconnected`)
         }
       } else {
         fail('invalid reason catch')
@@ -36,7 +35,3 @@ execute('swarm disconnect', async (success, fail) => {
     })
   }
 })
-
-
-
-

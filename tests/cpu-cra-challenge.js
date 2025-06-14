@@ -1,12 +1,12 @@
 import { execute } from 'test-a-bit'
 
 import { SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }               from '../src/server.js'
-import { WseClient }               from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
-function identify ({ identity, accept, meta, challenge }) {
+function identify({ identity, accept, meta, challenge }) {
   if (identity === SECRET) {
-    const user_id = meta.user_id || 'USR-1'
+    const user_id = meta.user_id || 'user-1'
     if (challenge.response !== 3) return accept(false)
     accept(user_id, { hey: 'some additional data for the client' })
   } else {
@@ -33,21 +33,19 @@ execute('cpu limit 2 with cra', async (success, fail) => {
   client1.challenge((quest, solve) => solve(quest.a + quest.b))
   client2.challenge((quest, solve) => solve('clearly-wrong-value'))
 
-  await client1.connect(SECRET, { user_id: 1 })
-      .then((r) => {
-        goals.c1connect = true
-        checkGoals()
-      })
-      .catch((e) => fail('client1 disconnected'))
+  await client1
+    .connect(SECRET, { user_id: 1 })
+    .then(r => {
+      goals.c1connect = true
+      checkGoals()
+    })
+    .catch(e => fail('client1 disconnected'))
 
-  await client2.connect(SECRET, { user_id: 1 })
-      .then((r) => fail('client2 connected successfully'))
-      .catch((e) => {
-        goals.c2disconnect = true
-        checkGoals()
-      })
+  await client2
+    .connect(SECRET, { user_id: 1 })
+    .then(r => fail('client2 connected successfully'))
+    .catch(e => {
+      goals.c2disconnect = true
+      checkGoals()
+    })
 })
-
-
-
-

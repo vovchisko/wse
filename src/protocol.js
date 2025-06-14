@@ -2,7 +2,7 @@
  * Default JSON protocol implementation for WSE.
  */
 export class WseJSON {
-  constructor () {
+  constructor() {
     /**
      * Protocol identifier used in WebSocket handshake.
      * @type {string}
@@ -23,6 +23,8 @@ export class WseJSON {
       challenge: '~wse:challenge',
       welcome: '~wse:welcome',
       call: '~wse:call',
+      response: '~wse:response',
+      response_error: '~wse:response-err',
     })
   }
 
@@ -34,12 +36,8 @@ export class WseJSON {
    * @param {*} [message.stamp] - Message stamp for RPC
    * @returns {string} JSON string
    */
-  pack ({ type, payload = undefined, stamp = undefined }) {
-    return JSON.stringify([
-      type,
-      payload,
-      stamp,
-    ])
+  pack({ type, payload = undefined, stamp = undefined }) {
+    return JSON.stringify([type, payload, stamp])
   }
 
   /**
@@ -47,8 +45,7 @@ export class WseJSON {
    * @param {string} encoded - JSON string to unpack
    * @returns {[string, *, *]} Tuple of [type, payload, stamp]
    */
-  unpack (encoded) {
+  unpack(encoded) {
     return JSON.parse(encoded)
   }
 }
-

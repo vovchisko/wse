@@ -1,8 +1,8 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('server > client: ignored message', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
@@ -10,11 +10,11 @@ execute('server > client: ignored message', async (success, fail) => {
 
   client.when.ignored((type, payload) => {
     payload.value === 42 && type === 'test'
-        ? success('correctly fired about ignored msg')
-        : fail('invalid data on ignored message')
+      ? success('correctly fired about ignored msg')
+      : fail('invalid data on ignored message')
   })
 
-  server.when.joined((client) => {
+  server.when.joined(client => {
     client.send('test', { value: 42 })
   })
 

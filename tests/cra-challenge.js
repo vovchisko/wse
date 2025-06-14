@@ -1,13 +1,13 @@
 import { execute } from 'test-a-bit'
 
 import { SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }               from '../src/server.js'
-import { WseClient }               from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('cra-challenge', async (success, fail) => {
-  function identifyWithCra ({ identity, accept, meta, challenge }) {
+  function identifyWithCra({ identity, accept, meta, challenge }) {
     if (identity === SECRET) {
-      const user_id = meta.user_id || 'USR-1'
+      const user_id = meta.user_id || 'user-1'
       if (challenge.response !== 3) fail('failed challenge')
       accept(user_id, { hey: 'some additional data for the client' })
     } else {
@@ -30,7 +30,3 @@ execute('cra-challenge', async (success, fail) => {
 
   await client.connect(SECRET, { user_id: 1 })
 })
-
-
-
-

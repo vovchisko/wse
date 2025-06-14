@@ -35,5 +35,13 @@ import { runner } from 'test-a-bit'
     { script: './tests/server2client-ignored.js' },
     { script: './tests/swarm-connect.js' },
     { script: './tests/swarm-disconnect.js' },
+    { script: './tests/bidirectional-rpc.js' },
+    { script: './tests/server-call-client.js' },
+    { script: './tests/server-call-not-registered.js' },
+    { script: './tests/server-call-client-throw-vanilla.js' },
+    { script: './tests/server-call-client-throw-wse.js' },
+    { script: './tests/server-call-client-throw-custom.js' },
+    { script: './tests/server-call-client-timeout.js' },
+    { script: './tests/custom-protocol.js' },
   ])
 })()

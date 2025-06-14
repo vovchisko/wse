@@ -1,9 +1,9 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WSE_ERROR }                         from '../src/common.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WSE_ERROR } from '../src/common.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('rp not registered', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
@@ -17,7 +17,7 @@ execute('rp not registered', async (success, fail) => {
     if (e.code === WSE_ERROR.RP_NOT_REGISTERED) {
       success(e.code)
     } else {
-      fail(`invalid error code ${ e }`)
+      fail(`invalid error code ${e}`)
     }
   }
 })

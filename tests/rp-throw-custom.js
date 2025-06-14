@@ -1,8 +1,8 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('rp throw custom', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
@@ -21,9 +21,7 @@ execute('rp throw custom', async (success, fail) => {
     if (e.details.test_field === 'nope') {
       success('correct details on error')
     } else {
-      fail(`invalid error code ${ e }`)
+      fail(`invalid error code ${e}`)
     }
   }
 })
-
-

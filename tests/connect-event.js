@@ -1,8 +1,8 @@
 import { execute } from 'test-a-bit'
 
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
-import { WseServer }                         from '../src/server.js'
-import { WseClient }                         from '../src/client.js'
+import { WseServer } from '../src/server.js'
+import { WseClient } from '../src/client.js'
 
 execute('connect event', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
@@ -14,7 +14,3 @@ execute('connect event', async (success, fail) => {
 
   await client.connect(SECRET, { client_meta: 1 })
 })
-
-
-
-
