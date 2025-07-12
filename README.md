@@ -50,15 +50,18 @@ console.log('Server running on ws://localhost:4200')
 ```javascript
 import { WseClient } from 'wse'
 
-const client = new WseClient({ url: 'ws://localhost:4200' })
+const client = new WseClient({ url: 'ws://localhost:4200', re: true })
 
-// Connect and send message
+// Connectnote  
+// NOTE: if "re:true" - conect will be only resolved after first successful connection.
 await client.connect()
+
+// and send message
 client.send('chat', 'Hello everyone!')
 
 // Listen for messages
 client.channel.on('chat', ({ user, message }) => {
-  console.log(`${user}: ${message}`)
+  console.log(`${ user }: ${ message }`)
 })
 ```
 

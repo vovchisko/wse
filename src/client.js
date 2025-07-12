@@ -5,10 +5,12 @@
 
 import { EventEmitter } from 'tseep'
 import Signal from 'a-signal'
+
+/** @type {typeof WebSocket} */
 import WS from 'isomorphic-ws'
 
 import { WseJSON } from './protocol.js'
-import { make_stamp, WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
+import { WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
 import { RpcManager } from './rpc-man.js'
 
 export class WseClient {
@@ -119,7 +121,6 @@ export class WseClient {
 
     let _resolve, _reject
     const _flushPromise = () => {
-      // paranoic
       _resolve = null
       _reject = null
     }
@@ -156,6 +157,11 @@ export class WseClient {
 
     const handleError = err => {
       this.error.emit(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
+      // When reconnect is enabled, don't let connection errors bubble up as promise rejections
+      if (!this.re && _reject) {
+        _reject(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
+        _flushPromise()
+      }
     }
 
     const handleClose = event => {
@@ -163,10 +169,12 @@ export class WseClient {
       this._update_status(WSE_STATUS.OFFLINE)
 
       this._wipe_ws()
-      if (_reject) {
+
+      if (!this.re && _reject) {
         _reject(String(event.reason))
         _flushPromise()
       }
+
       if (this.re && this.re_on_codes.includes(event.code)) {
         const in_s = this.re_t0 + Math.random() * 1000
         this._update_status(WSE_STATUS.RE_CONNECTING)
@@ -184,8 +192,13 @@ export class WseClient {
     }
 
     return new Promise((resolve, reject) => {
-      _resolve = resolve
-      _reject = reject
+      if (this.re) {
+        _resolve = resolve
+        _reject = null // If reconnect is enabled, never reject the promise
+      } else {
+        _resolve = resolve
+        _reject = reject
+      }
       tryConnect()
     })
   }
@@ -239,9 +252,9 @@ export class WseClient {
    * @return {boolean|void}
    * @private
    */
-    _process_msg(message) {
+  _process_msg(message) {
     let [type, payload, stamp] = this.protocol.unpack(message.data)
-    
+
     // Handle RPC responses - direct callback execution
     if (type === this.protocol.internal_types.response) {
       if (this._rpcManager.handleResponse(stamp, payload, true)) return
@@ -249,7 +262,7 @@ export class WseClient {
     if (type === this.protocol.internal_types.response_error) {
       if (this._rpcManager.handleResponse(stamp, payload, false)) return
     }
-    
+
     // If stamp exists, it's an incoming RPC call from server
     if (stamp) {
       if (this._rpcManager.has(type)) {
@@ -266,12 +279,12 @@ export class WseClient {
         return
       }
     }
-    
+
     // Only user messages go through channel
     return this.channel.emit(type, payload, stamp) || this.ignored.emit(type, payload, stamp)
   }
 
-    _handle_incoming_call(type, payload, stamp) {
+  _handle_incoming_call(type, payload, stamp) {
     const procedure = this._rpcManager.get(type)
 
     const rp_wrap = async () => {
@@ -358,14 +371,7 @@ export class WseClient {
    */
   async call(rp, payload) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
-      return this._rpcManager.call(
-        this.protocol,
-        rp,
-        payload,
-        this.tO,
-        (data) => this._ws.send(data),
-        this.closed
-      )
+      return this._rpcManager.call(this.protocol, rp, payload, this.tO, data => this._ws.send(data), this.closed)
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
       this.error.emit(err)

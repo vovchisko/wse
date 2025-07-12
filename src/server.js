@@ -153,13 +153,13 @@ export class WseConnection {
     if (this.ws_conn && this.ws_conn.readyState === 1) {
       // Create a signal that filters disconnect events for this specific connection
       const connectionDisconnectSignal = {
-        once: (callback) => {
+        once: callback => {
           return this.server.disconnected.once((conn, code, reason) => {
             if (conn === this) {
               callback(code, reason)
             }
           })
-        }
+        },
       }
 
       return this.server._rpcManager.call(
@@ -167,7 +167,7 @@ export class WseConnection {
         rp,
         payload,
         this.server.tO || 0,
-        (data) => this.ws_conn.send(data),
+        data => this.ws_conn.send(data),
         connectionDisconnectSignal
       )
     } else {

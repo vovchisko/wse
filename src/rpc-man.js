@@ -10,6 +10,17 @@ export class RpcManager {
   }
 
   /**
+   * Normalize error for RPC response.
+   * @param {*} err - Error to normalize
+   * @returns {Object} Normalized error object
+   */
+  static normalizeError(err) {
+    return err.code && err.details
+      ? err
+      : { code: WSE_ERROR.RP_EXECUTION_FAILED, message: err.message || 'Unexpected error', details: err }
+  }
+
+  /**
    * Register remote procedure.
    * @param {string} rp - Remote procedure name
    * @param {Function} handler - Function to handle RPC calls
@@ -64,19 +75,6 @@ export class RpcManager {
   }
 
   /**
-   * Normalize error for RPC response.
-   * @param {*} err - Error to normalize
-   * @returns {Object} Normalized error object
-   */
-  static normalizeError(err) {
-    return err.code && err.details ? err : {
-      code: WSE_ERROR.RP_EXECUTION_FAILED,
-      message: err.message || 'Unexpected error',
-      details: err,
-    }
-  }
-
-  /**
    * Create RPC call promise.
    * @param {Object} protocol - Protocol instance
    * @param {string} rp - RPC name
@@ -88,7 +86,7 @@ export class RpcManager {
    */
   call(protocol, rp, payload, timeout, sendFn, disconnectSignal) {
     if (!rp || typeof rp !== 'string') throw new Error('rp_name not a string')
-    
+
     return new Promise((resolve, reject) => {
       const stamp = make_stamp()
       let timeoutHandle
@@ -127,4 +125,4 @@ export class RpcManager {
       sendFn(protocol.pack({ type: rp, payload, stamp }))
     })
   }
-} 
+}
