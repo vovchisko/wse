@@ -12,7 +12,7 @@ export class RpcManager {
   /**
    * Normalize error for RPC response.
    * @param {*} err - Error to normalize
-   * @returns {Object} Normalized error object
+   * @returns {object} Normalized error object
    */
   static normalizeError(err) {
     return err.code && err.details
@@ -76,12 +76,12 @@ export class RpcManager {
 
   /**
    * Create RPC call promise.
-   * @param {Object} protocol - Protocol instance
+   * @param {object} protocol - Protocol instance
    * @param {string} rp - RPC name
    * @param {*} payload - RPC payload
    * @param {number} timeout - Timeout in seconds
    * @param {Function} sendFn - Function to send message
-   * @param {Object} disconnectSignal - Signal for disconnect events
+   * @param {object} disconnectSignal - Signal for disconnect events
    * @returns {Promise<*>} RPC result promise
    */
   call(protocol, rp, payload, timeout, sendFn, disconnectSignal) {

@@ -18,9 +18,9 @@ export class WseClient {
    * WseClient instance.
    * @param options
    * @param options.url - WS/WSS endpoint.
-   * @param {Number} [options.tO] - Timeout in seconds for RP calls.
+   * @param {number} [options.tO] - Timeout in seconds for RP calls.
    * @param {Boolean} [options.re] - Reconnect In cause of 1006 code closure.
-   * @param {WseJSON|Object} [options.protocol] - Message processor.
+   * @param {WseJSON|object} [options.protocol] - Message processor.
    */
   constructor({ url, tO = 20, protocol, re = false, ...ws_options }) {
     this.protocol = protocol || new WseJSON()
@@ -39,7 +39,7 @@ export class WseClient {
     this.closed = new Signal()
     this.re = re
     this.re_t0 = 1000
-    this.re_on_codes = [1005, 1006, 1011, 1012, 1013, 1014]
+    this.re_on_codes = [1005, 1006, 1011, 1012, 1013, 1014, 4000] // 4000 for jump
 
     this._rpcManager = new RpcManager()
 
@@ -54,7 +54,7 @@ export class WseClient {
     /**
      * Callback for handling ready state.
      * @callback ReadyCallback
-     * @param {Object} payload - Server welcome payload
+     * @param {object} payload - Server welcome payload
      */
 
     /**
@@ -110,9 +110,9 @@ export class WseClient {
   /**
    * Connnect to WSE Server.
    * @param {*} identity - A set of data or primitive value that identifies a user.
-   * @param {Object} [meta={}] - Optional data not involved into auth process, but will be passed forward.
-   * @returns {Promise<Object>}
-   * @throws {WSE_ERROR}
+   * @param {object} [meta={}] - Optional data not involved into auth process, but will be passed forward.
+   * @returns {Promise<any>}
+   * @throws {WseError}
    */
   connect(identity = '', meta = {}) {
     if (this._ws) throw WSE_ERROR.CLIENT_ALREADY_CONNECTED
@@ -175,8 +175,8 @@ export class WseClient {
         _flushPromise()
       }
 
-      if (this.re && this.re_on_codes.includes(event.code)) {
-        const in_s = this.re_t0 + Math.random() * 1000
+      if ((this.re && this.re_on_codes.includes(event.code)) || event.code === 4000) {
+        const in_s = event.code === 4000 ? 0 : this.re_t0 + Math.random() * 1000
         this._update_status(WSE_STATUS.RE_CONNECTING)
         setTimeout(tryConnect, in_s)
       }
@@ -323,7 +323,7 @@ export class WseClient {
   /**
    * Send message to the server.
    *
-   * @param {String} type
+   * @param {string} type
    * @param {*} [payload]
    */
   send(type, payload) {
@@ -339,10 +339,39 @@ export class WseClient {
   /**
    * Close connection.
    *
-   * @param {WSE_REASON|String} [reason]
+   * @param {WSE_REASON|string} [reason]
    */
   close(reason = WSE_REASON.BY_CLIENT) {
     if (this._ws) this._ws.close(1000, reason)
+  }
+
+  /**
+   * Jump to a different server endpoint. If currently connected, disconnects first.
+   * Useful for switching between game levels, server instances, or regions.
+   * 
+   * @param {string} newUrl - New WebSocket endpoint to connect to
+   * @param {*} [identity=''] - Identity data for authentication (same format as connect())
+   * @param {object} [meta={}] - Optional metadata for the new connection
+   * @returns {Promise<any>} Promise that resolves with server welcome data
+   * @throws {WseError} Same errors as connect() method
+   * 
+   * @example
+   * // Jump to new game level
+   * await client.jump('ws://level2.game.com:4200')
+   * 
+   * // Jump with new authentication
+   * await client.jump('ws://boss.game.com:4200', { token: 'boss-level-token' })
+   */
+  jump(newUrl, identity = '', meta = {}) {
+    if (this._ws) {
+      this.url = newUrl
+      this.ready.forget()
+      this._ws.close(4000, 'jump')
+      return this.ready.wait()
+    } else {
+      this.url = newUrl
+      return this.connect(identity, meta)
+    }
   }
 
   /**

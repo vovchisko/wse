@@ -4,7 +4,6 @@
   "description": "Suspicious wrapper for websocket with auth and custom protocol support.",
   "main": "node.js",
   "browser": "browser.js",
-  "types": "wse.d.ts",
   "type": "module",
   "exports": {
     "node": "./node.js",
@@ -62,7 +61,6 @@
   "files": [
     "src/*.js",
     "node.js",
-    "browser.js",
-    "wse.d.ts"
+    "browser.js"
   ]
 }

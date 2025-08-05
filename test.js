@@ -43,5 +43,6 @@ import { runner } from 'test-a-bit'
     { script: './tests/server-call-client-throw-custom.js' },
     { script: './tests/server-call-client-timeout.js' },
     { script: './tests/custom-protocol.js' },
+    { script: './tests/jump.js' },
   ])
 })()

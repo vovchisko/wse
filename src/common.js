@@ -47,7 +47,7 @@ export const WSE_ERROR = Object.freeze({
 
 /**
  * Create low-grade unique ID.
- * @param {Number} [len]
+ * @param {number} [len]
  * @returns {string}
  */
 export function make_stamp(len = 10) {
@@ -64,8 +64,8 @@ export function make_stamp(len = 10) {
 export class WseError extends Error {
   /**
    * WseError wrapper
-   * @param {String} code
-   * @param {Object} details
+   * @param {string} code
+   * @param {object} details
    */
   constructor(code, details = {}) {
     super(code)

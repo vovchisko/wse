@@ -11,7 +11,7 @@ export class WseJSON {
 
     /**
      * Internal message types used by WSE.
-     * @type {Object}
+     * @type {object}
      * @property {string} hi - Initial client greeting
      * @property {string} challenge - Challenge-response authentication
      * @property {string} welcome - Server welcome response
@@ -30,7 +30,7 @@ export class WseJSON {
 
   /**
    * Pack message into JSON string.
-   * @param {Object} message - Message to pack
+   * @param {object} message - Message to pack
    * @param {string} message.type - Message type
    * @param {*} [message.payload] - Message payload
    * @param {*} [message.stamp] - Message stamp for RPC

@@ -63,6 +63,9 @@ client.send('chat', 'Hello everyone!')
 client.channel.on('chat', ({ user, message }) => {
   console.log(`${ user }: ${ message }`)
 })
+
+// Jump to different server (e.g., different game level)
+await client.jump('ws://level2.game.com:4200')
 ```
 
 ## API Reference
@@ -113,6 +116,7 @@ client.channel.on('chat', ({ user, message }) => {
 - **`client.status`** - Connection status (WSE_STATUS)
 - **`client.cid`** - User ID (after connection)
 - **`client.connect(identity, meta)`** - Connect and authenticate
+- **`client.jump(newUrl, identity, meta)`** - Switch to different server endpoint
 - **`client.send(type, payload)`** - Send message to server
 - **`client.call(rp, payload)`** - Call server RPC
 - **`client.register(rp, handler)`** - Register client RPC

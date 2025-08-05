@@ -47,7 +47,7 @@ export class WseConnection {
     /** @type {*|null} Original authentication data sent by client (tokens, credentials, etc.) */
     this.identity = null
 
-    /** @type {Object} Additional metadata provided during connection */
+    /** @type {object} Additional metadata provided during connection */
     this.meta = {}
 
     /** @type {*} Challenge quest data for CRA authentication */
@@ -193,10 +193,10 @@ export class WseServer {
    *
    * @callback WseServer.identifyCallback
    * @param {*} params.identity - Original authentication data from client (JWT, ticket, credentials, etc.)
-   * @param {Object} params.meta - Optional metadata from client (not used for auth validation)
+   * @param {object} params.meta - Optional metadata from client (not used for auth validation)
    * @param {Function} params.accept - Call with resolved user ID to accept connection: accept(userId, welcomePayload)
    * @param {Function} params.refuse - Call to reject the connection
-   * @param {Object} [params.challenge] - Challenge-response data (if CRA is enabled)
+   * @param {object} [params.challenge] - Challenge-response data (if CRA is enabled)
    * @param {*} params.challenge.quest - Challenge sent to client
    * @param {*} params.challenge.response - Client's response to challenge
    * @param {string} params.id - Unique connection ID
@@ -227,7 +227,7 @@ export class WseServer {
    *
    * @callback WseServer.CraGenerator
    * @param {*} identity identity, presented by user
-   * @param {Object} params.meta optional data from the client
+   * @param {object} params.meta optional data from the client
    * @param {Function} params.quest function that accepts quest payload for user.
    */
 
@@ -251,7 +251,7 @@ export class WseServer {
    *
    * @callback WseServer.handleIgnored
    * @param {WseConnection} conn
-   * @param {String} type
+   * @param {string} type
    * @param {*} payload
    */
 
@@ -260,8 +260,8 @@ export class WseServer {
    *
    * @callback WseServer.handleLeft
    * @param {WseIdentity} identity
-   * @param {Number} code
-   * @param {String|WSE_REASON} reason
+   * @param {number} code
+   * @param {string|WSE_REASON} reason
    */
 
   /**
@@ -269,8 +269,8 @@ export class WseServer {
    *
    * @callback WseServer.handleDisconnected
    * @param {WseConnection} connection
-   * @param {Number} code
-   * @param {String|WSE_REASON} reason
+   * @param {number} code
+   * @param {string|WSE_REASON} reason
    */
 
   /**
@@ -284,11 +284,11 @@ export class WseServer {
   /**
    * WseServer class for managing authenticated WebSocket connections.
    *
-   * @param {Object}    options see https://github.com/websockets/ws/#readme.
+   * @param {object}    options see https://github.com/websockets/ws/#readme.
    *
    * @param {Function|WseServer.identifyCallback} options.identify Will be called for each new connection.
-   * @param {Number}    [options.connPerUser=1] How many connections allowed per user
-   * @param {Object}    [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
+   * @param {number}    [options.connPerUser=1] How many connections allowed per user
+   * @param {object}    [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    *
    * @example
    * ```javascript
@@ -338,15 +338,15 @@ export class WseServer {
    * ```
    *
    * and classic ws params...
-   * @param {Number}    [options.backlog=511] The maximum length of the queue of pending connections
+   * @param {number}    [options.backlog=511] The maximum length of the queue of pending connections
    * @param {Boolean}   [options.clientTracking=true] Specifies whether or not to track clients
-   * @param {String}    [options.host] The hostname where to bind the server
-   * @param {Number}    [options.maxPayload=104857600] The maximum allowed message size
+   * @param {string}    [options.host] The hostname where to bind the server
+   * @param {number}    [options.maxPayload=104857600] The maximum allowed message size
    * @param {Boolean}   [options.noServer=false] Enable no server mode
-   * @param {String}    [options.path] Accept only connections matching this path
+   * @param {string}    [options.path] Accept only connections matching this path
    * @param {(Boolean|Object)} [options.perMessageDeflate=false] Enable/disable permessage-deflate
-   * @param {Number}    [options.port] The port where to bind the server
-   * @param {import('http').Server|import('https').Server|Object} [options.server] A pre-created HTTP/S server to use
+   * @param {number}    [options.port] The port where to bind the server
+   * @param {import('http').Server|import('https').Server|object} [options.server] A pre-created HTTP/S server to use
    * @param {Boolean}   [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
    * @param {Function}  [options.verifyClient] A hook to reject connections
    */
@@ -376,7 +376,7 @@ export class WseServer {
      * Callback for handling when a new client (user) joins.
      * @callback JoinedCallback
      * @param {WseIdentity} client - The authenticated user identity
-     * @param {Object} meta - Additional metadata provided during connection
+     * @param {object} meta - Additional metadata provided during connection
      */
 
     /**
@@ -545,7 +545,7 @@ export class WseServer {
   /**
    * Handle valid message from the client.
    * @param {WseConnection} conn
-   * @param {String} type
+   * @param {string} type
    * @param {*} payload
    * @private
    */
@@ -556,9 +556,9 @@ export class WseServer {
   /**
    * Handle valid RP call from the client.
    * @param {WseConnection} conn
-   * @param {String} type
+   * @param {string} type
    * @param {*} payload
-   * @param {String} stamp
+   * @param {string} stamp
    * @private
    */
   _handle_valid_call(conn, type, payload, stamp) {
@@ -652,7 +652,7 @@ export class WseServer {
 
   /**
    * Unregister existing RP.
-   * @param {String} rp RP name
+   * @param {string} rp RP name
    */
   unregister(rp) {
     this._rpcManager.unregister(rp)
@@ -661,7 +661,7 @@ export class WseServer {
   /**
    * Handle message from the client-stranger.
    * @param {WseConnection} conn
-   * @param {String} type
+   * @param {string} type
    * @param {*} payload
    * @private
    */
@@ -728,7 +728,7 @@ export class WseServer {
   /**
    * Handle valid RP call from the client.
    * @param {WseConnection} conn
-   * @param {String} cid Resolved user identifier.
+   * @param {string} cid Resolved user identifier.
    * @param {*} welcome_payload Payload from the server.
    * @param {*} payload Client's payload
    * @private
@@ -774,8 +774,8 @@ export class WseServer {
 
   /**
    * Drop client with specific ID.
-   * @param {String} id client ID
-   * @param {WSE_REASON|String|Buffer} [reason] WSE_REASON
+   * @param {string} id client ID
+   * @param {WSE_REASON|string|Buffer} [reason] WSE_REASON
    */
   dropClient(id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
@@ -790,8 +790,8 @@ export class WseServer {
 
   /**
    * Send message to the client by Id.
-   * @param {String} cid Client ID
-   * @param {String} type message type
+   * @param {string} cid Client ID
+   * @param {string} type message type
    * @param {*} [payload] optional payload
    */
   send(cid, type, payload) {
@@ -815,9 +815,9 @@ export class WseIdentity {
    * Note: Original authentication data (tokens, etc.) is available on individual
    * connections via `conn.identity`, not stored here.
    *
-   * @param {Object} params - Identity parameters
+   * @param {object} params - Identity parameters
    * @param {string} params.cid - Resolved client identifier (e.g., user ID, account ID)
-   * @param {Object} [params.meta={}] - Additional metadata from connection
+   * @param {object} [params.meta={}] - Additional metadata from connection
    * @param {WseServer} server - WSE server instance
    */
   constructor({ cid, meta = {} }, server) {
@@ -827,7 +827,7 @@ export class WseIdentity {
     /** @type {Map<string, WseConnection>} Active connections for this user (devices) */
     this.conns = new Map()
 
-    /** @type {Object} Additional metadata */
+    /** @type {object} Additional metadata */
     this.meta = meta
 
     /** @type {WseServer} Parent server instance */
@@ -853,8 +853,8 @@ export class WseIdentity {
 
   /**
    * Drop connection by it's ID.
-   * @param {String} id
-   * @param {WSE_REASON|String} [reason]
+   * @param {string} id
+   * @param {WSE_REASON|string} [reason]
    * @private
    */
   _conn_drop(id, reason = WSE_REASON.NO_REASON) {
