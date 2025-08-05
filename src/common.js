@@ -1,6 +1,3 @@
-/**
- * @enum {string}
- */
 export const WSE_REASON = Object.freeze({
   NO_REASON: '',
   CLIENTS_CONCURRENCY: 'wse.clients-concurrency',
@@ -9,9 +6,6 @@ export const WSE_REASON = Object.freeze({
   BY_CLIENT: 'wse.by-client',
 })
 
-/**
- * @enum {string}
- */
 export const WSE_STATUS = {
   IDLE: 'IDLE',
   OFFLINE: 'OFFLINE',
@@ -20,9 +14,6 @@ export const WSE_STATUS = {
   RE_CONNECTING: 'RE_CONNECTING',
 }
 
-/**
- * @enum {string}
- */
 export const WSE_ERROR = Object.freeze({
   // client
   INVALID_CRA_HANDLER: 'wse.client.invalid-cra-handler',
