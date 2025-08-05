@@ -9,12 +9,12 @@ execute('server call client timeout', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify, tO: 0.1 })
   const client = new WseClient({ url: WS_URL })
 
-  client.register('test-rp', async (payload) => {
+  client.register('test-rp', async payload => {
     await wait(60000)
     return 1
   })
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       await conn.call('test-rp', null)
       fail('still responds')
@@ -28,4 +28,4 @@ execute('server call client timeout', async (success, fail) => {
   })
 
   await client.connect(SECRET)
-}) 
+})

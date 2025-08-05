@@ -14,7 +14,7 @@ execute('server call client throw wse /w custom code', async (success, fail) => 
     throw new WseError(ERR_CODE, { fun: 1 })
   })
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       await conn.call('test-rp-custom', { value: 1 })
       fail('no errors!')
@@ -28,4 +28,4 @@ execute('server call client throw wse /w custom code', async (success, fail) => 
   })
 
   await client.connect(SECRET, { client_meta: 1 })
-}) 
+})

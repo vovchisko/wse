@@ -4,6 +4,7 @@ export const WSE_REASON = Object.freeze({
   NOT_AUTHORIZED: 'wse.not-authorized',
   PROTOCOL_ERR: 'wse.protocol-error',
   BY_CLIENT: 'wse.by-client',
+  BY_SERVER: 'wse.by-server',
 })
 
 export const WSE_STATUS = {

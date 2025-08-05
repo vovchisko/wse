@@ -13,7 +13,7 @@ execute('server call client throw vanilla', async (success, fail) => {
     throw new Error('Vanilla error')
   })
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       await conn.call('test-rp-custom', { value: 1 })
       fail('no errors!')
@@ -27,4 +27,4 @@ execute('server call client throw vanilla', async (success, fail) => {
   })
 
   await client.connect(SECRET, { client_meta: 1 })
-}) 
+})

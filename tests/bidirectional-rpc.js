@@ -10,10 +10,10 @@ execute('bidirectional RPC', async (success, fail) => {
   // Register RPC on client
   client.register('ping', () => 'pong')
 
-  // Register RPC on server  
+  // Register RPC on server
   server.register('add', (conn, payload) => payload.a + payload.b)
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       // Test server calling client RPC
       const pingResult = await conn.call('ping')
@@ -38,4 +38,4 @@ execute('bidirectional RPC', async (success, fail) => {
   } catch (e) {
     fail(`RPC failed: ${e.message}`)
   }
-}) 
+})

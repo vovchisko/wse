@@ -9,7 +9,7 @@ execute('server call client not registered', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       await conn.call('no-existing-rp')
       fail('should have thrown error')
@@ -23,4 +23,4 @@ execute('server call client not registered', async (success, fail) => {
   })
 
   await client.connect(SECRET, { client_meta: 1 })
-}) 
+})

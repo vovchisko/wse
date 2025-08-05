@@ -10,7 +10,7 @@ class WseCustomProtocol {
     this.name = 'wse-default-json'
     this.internal_types = Object.freeze({
       hi: '~wse:hi',
-      challenge: '~wse:challenge', 
+      challenge: '~wse:challenge',
       welcome: '~wse:welcome',
       call: '~wse:call',
       response: '~wse:response',
@@ -28,7 +28,7 @@ class WseCustomProtocol {
       // Handle Buffer or other types
       encoded = encoded.toString()
     }
-    
+
     if (!encoded.startsWith('CUSTOM:')) {
       throw new Error('Invalid custom protocol format')
     }
@@ -43,7 +43,7 @@ execute('custom protocol', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify, protocol: serverProtocol })
   const client = new WseClient({ url: WS_URL, protocol: clientProtocol })
 
-  client.register('test-rp', (payload) => {
+  client.register('test-rp', payload => {
     return payload.value * 2
   })
 
@@ -55,7 +55,7 @@ execute('custom protocol', async (success, fail) => {
     }
   })
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       const result = await conn.call('test-rp', { value: 21 })
       if (result === 42) {
@@ -69,4 +69,4 @@ execute('custom protocol', async (success, fail) => {
   })
 
   await client.connect(SECRET, { client_meta: 1 })
-}) 
+})

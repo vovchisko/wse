@@ -8,12 +8,12 @@ execute('server call client', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })
   const client = new WseClient({ url: WS_URL })
 
-  client.register('test-rp', async (payload) => {
+  client.register('test-rp', async payload => {
     await wait(100)
     return payload.value * 2
   })
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       const res = await conn.call('test-rp', { value: 21 })
       if (res === 42) success('42 is correct response from client rp')
@@ -24,4 +24,4 @@ execute('server call client', async (success, fail) => {
   })
 
   await client.connect(SECRET, { client_meta: 1 })
-}) 
+})

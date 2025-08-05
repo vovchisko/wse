@@ -12,7 +12,7 @@ execute('server call client throw custom', async (success, fail) => {
     throw { test_field: 'nope' }
   })
 
-  server.when.connected(async (conn) => {
+  server.when.connected(async conn => {
     try {
       await conn.call('test-rp-custom', { value: 1 })
       fail('no errors!')
@@ -26,4 +26,4 @@ execute('server call client throw custom', async (success, fail) => {
   })
 
   await client.connect(SECRET, { client_meta: 1 })
-}) 
+})

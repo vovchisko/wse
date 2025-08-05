@@ -348,17 +348,17 @@ export class WseClient {
   /**
    * Jump to a different server endpoint. If currently connected, disconnects first.
    * Useful for switching between game levels, server instances, or regions.
-   * 
+   *
    * @param {string} newUrl - New WebSocket endpoint to connect to
    * @param {*} [identity=''] - Identity data for authentication (same format as connect())
    * @param {object} [meta={}] - Optional metadata for the new connection
    * @returns {Promise<any>} Promise that resolves with server welcome data
    * @throws {WseError} Same errors as connect() method
-   * 
+   *
    * @example
    * // Jump to new game level
    * await client.jump('ws://level2.game.com:4200')
-   * 
+   *
    * // Jump with new authentication
    * await client.jump('ws://boss.game.com:4200', { token: 'boss-level-token' })
    */
