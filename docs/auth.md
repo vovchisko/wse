@@ -2,7 +2,6 @@
 
 ## Anonymous Connections
 
-This is it. Yah
 Server accepts everyone without authentication:
 
 ```javascript
