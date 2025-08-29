@@ -1,4 +1,6 @@
-# HTTP
+# Custom Server
+
+`wse` allows using existing server to handle upgrade request for websocket.
 
 ## Express Integration
 

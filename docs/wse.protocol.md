@@ -59,7 +59,7 @@ Your custom protocol must:
 
 ```javascript
 class BinaryProtocol {
-  constructor() {
+  constructor () {
     this.name = 'binary-protocol'
     this.internal_types = Object.freeze({
       hi: 0x01,
@@ -71,16 +71,16 @@ class BinaryProtocol {
     })
   }
 
-  pack({ type, payload, stamp }) {
+  pack ({ type, payload, stamp }) {
     const data = { type, payload, stamp }
     const json = JSON.stringify(data)
     return Buffer.from(json, 'utf8')
   }
 
-  unpack(buffer) {
+  unpack (buffer) {
     const json = buffer.toString('utf8')
     const { type, payload, stamp } = JSON.parse(json)
-    return [type, payload, stamp]
+    return [ type, payload, stamp ]
   }
 }
 ``` 

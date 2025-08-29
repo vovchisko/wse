@@ -22,13 +22,13 @@
  * - client.identity: Does not exist - use conn.identity for original auth data
  */
 
-import { EventEmitter } from 'tseep'
+import { EventEmitter }               from 'tseep'
 import { WebSocket, WebSocketServer } from 'ws'
-import Signal from 'a-signal'
+import Signal                         from 'a-signal'
 
-import { WseJSON } from './protocol.js'
+import { WseJSON }                                     from './protocol.js'
 import { make_stamp, WSE_ERROR, WSE_REASON, WseError } from './common.js'
-import { RpcManager } from './rpc-man.js'
+import { RpcManager }                                  from './rpc-man.js'
 
 const CLIENT_STRANGER = 'CLIENT_STRANGER'
 const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
@@ -43,7 +43,7 @@ export class WseConnection {
    * @param {WebSocket} ws_conn - The underlying WebSocket connection
    * @param {WseServer} server - The WSE server instance
    */
-  constructor(ws_conn, server) {
+  constructor (ws_conn, server) {
     /** @type {*|null} Original authentication data sent by client (tokens, credentials, etc.) */
     this.identity = null
 
@@ -79,7 +79,7 @@ export class WseConnection {
    * WebSocket ready state.
    * @returns {number} WebSocket ready state (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)
    */
-  get readyState() {
+  get readyState () {
     return this.ws_conn.readyState
   }
 
@@ -88,7 +88,7 @@ export class WseConnection {
    * This is the validated user identifier (e.g., user ID, account ID) assigned during authentication.
    * @returns {string|null} Client ID or null if not authenticated
    */
-  get cid() {
+  get cid () {
     return this.client ? this.client.cid || null : null
   }
 
@@ -97,7 +97,7 @@ export class WseConnection {
    * @param {WseIdentity} client - The client identity to associate with
    * @private
    */
-  _identify_as(client) {
+  _identify_as (client) {
     this.client = client
     this.valid_stat = CLIENT_VALID
   }
@@ -113,7 +113,7 @@ export class WseConnection {
    *   return { success: true }
    * })
    */
-  send(type, payload) {
+  send (type, payload) {
     this.ws_conn.send(this.server.protocol.pack({ type, payload }))
   }
 
@@ -121,7 +121,7 @@ export class WseConnection {
    * Close this specific connection.
    * @param {string|WSE_REASON} [reason] - Reason for closing connection
    */
-  drop(reason = WSE_REASON.NO_REASON) {
+  drop (reason = WSE_REASON.NO_REASON) {
     this.ws_conn.close(1000, String(reason))
   }
 
@@ -149,7 +149,7 @@ export class WseConnection {
    *   }
    * }
    */
-  async call(rp, payload) {
+  async call (rp, payload) {
     if (this.ws_conn && this.ws_conn.readyState === 1) {
       // Create a signal that filters disconnect events for this specific connection
       const connectionDisconnectSignal = {
@@ -163,12 +163,12 @@ export class WseConnection {
       }
 
       return this.server._rpcManager.call(
-        this.server.protocol,
-        rp,
-        payload,
-        this.server.tO || 0,
-        data => this.ws_conn.send(data),
-        connectionDisconnectSignal
+          this.server.protocol,
+          rp,
+          payload,
+          this.server.tO || 0,
+          data => this.ws_conn.send(data),
+          connectionDisconnectSignal,
       )
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
@@ -350,7 +350,7 @@ export class WseServer {
    * @param {Boolean}   [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
    * @param {Function}  [options.verifyClient] A hook to reject connections
    */
-  constructor({ protocol = undefined, identify, connPerUser = 1, tO = 20, ...options }) {
+  constructor ({ protocol = undefined, identify, connPerUser = 1, tO = 20, ...options }) {
     if (!identify) throw new WseError(WSE_ERROR.IDENTIFY_HANDLER_MISSING)
 
     /** @type {Map<string, WseIdentity>} Map of authenticated users (cid -> client) */
@@ -457,7 +457,7 @@ export class WseServer {
    * Add listeners to the WS.
    * @private
    */
-  _listen() {
+  _listen () {
     this.ws.on('connection', (ws_conn, req) => {
       const conn = new WseConnection(ws_conn, this)
 
@@ -471,7 +471,7 @@ export class WseServer {
         let stamp
 
         try {
-          ;[type, payload, stamp] = this.protocol.unpack(message)
+          ;[ type, payload, stamp ] = this.protocol.unpack(message)
 
           switch (conn.valid_stat) {
             case CLIENT_VALID:
@@ -489,7 +489,7 @@ export class WseServer {
           }
         } catch (err) {
           const error = err.type !== 'wse-error' ? new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }) : err
-          error.message_from = conn.cid ? `${conn.cid}#${conn.conn_id}` : 'stranger'
+          error.message_from = conn.cid ? `${ conn.cid }#${ conn.conn_id }` : 'stranger'
           this.error.emit(err, conn)
           if (conn.cid && this.clients.has(conn.cid)) {
             this.clients.get(conn.cid)._conn_drop(conn.conn_id, WSE_REASON.PROTOCOL_ERR)
@@ -517,7 +517,7 @@ export class WseServer {
    * Generate challenge for connected user.
    * @param {WseServer.CraGenerator} cra_generator
    */
-  useChallenge(cra_generator) {
+  useChallenge (cra_generator) {
     if (typeof cra_generator === 'function') {
       this._cra_generator = cra_generator
     } else {
@@ -532,7 +532,7 @@ export class WseServer {
    * @returns void
    * @private
    */
-  _handle_connection(conn, req) {
+  _handle_connection (conn, req) {
     if (conn.ws_conn.protocol !== this.protocol.name) {
       conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
       return
@@ -549,7 +549,7 @@ export class WseServer {
    * @param {*} payload
    * @private
    */
-  _handle_valid_message(conn, type, payload) {
+  _handle_valid_message (conn, type, payload) {
     this.channel.emit(type, conn, payload) || this.ignored.emit(conn, type, payload)
   }
 
@@ -561,7 +561,7 @@ export class WseServer {
    * @param {string} stamp
    * @private
    */
-  _handle_valid_call(conn, type, payload, stamp) {
+  _handle_valid_call (conn, type, payload, stamp) {
     // Handle RPC responses - direct callback execution
     if (type === this.protocol.internal_types.response) {
       if (this._rpcManager.handleResponse(stamp, payload, true)) return
@@ -573,11 +573,11 @@ export class WseServer {
     // Handle incoming RPC calls
     if (!this._rpcManager.has(type)) {
       conn.ws_conn.send(
-        this.protocol.pack({
-          type: this.protocol.internal_types.response_error,
-          payload: { code: WSE_ERROR.RP_NOT_REGISTERED },
-          stamp: stamp,
-        })
+          this.protocol.pack({
+            type: this.protocol.internal_types.response_error,
+            payload: { code: WSE_ERROR.RP_NOT_REGISTERED },
+            stamp: stamp,
+          }),
       )
 
       return
@@ -588,35 +588,35 @@ export class WseServer {
     const rp_wrap = async () => {
       const result = await procedure(conn, payload)
       conn.ws_conn.send(
-        this.protocol.pack({
-          type: this.protocol.internal_types.response,
-          payload: result,
-          stamp: stamp,
-        })
+          this.protocol.pack({
+            type: this.protocol.internal_types.response,
+            payload: result,
+            stamp: stamp,
+          }),
       )
     }
 
     rp_wrap().catch(err => {
-      const errorPayload = RpcManager.normalizeError(err)
+      const errorPayload = RpcManager.normalizeError(err, type, payload)
 
       conn.ws_conn.send(
-        this.protocol.pack({
-          type: this.protocol.internal_types.response_error,
-          payload: errorPayload,
-          stamp: stamp,
-        })
+          this.protocol.pack({
+            type: this.protocol.internal_types.response_error,
+            payload: errorPayload,
+            stamp: stamp,
+          }),
       )
 
       this.error.emit(
-        new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
-          type,
-          payload,
-          stamp,
-          cid: conn.cid,
-          conn_id: conn.conn_id,
-          err,
-        }),
-        conn
+          new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
+            type,
+            payload,
+            stamp,
+            cid: conn.cid,
+            conn_id: conn.conn_id,
+            err,
+          }),
+          conn,
       )
     })
   }
@@ -646,7 +646,7 @@ export class WseServer {
    *   return { deleted: true }
    * })
    */
-  register(rp, handler) {
+  register (rp, handler) {
     this._rpcManager.register(rp, handler)
   }
 
@@ -654,7 +654,7 @@ export class WseServer {
    * Unregister existing RP.
    * @param {string} rp RP name
    */
-  unregister(rp) {
+  unregister (rp) {
     this._rpcManager.unregister(rp)
   }
 
@@ -665,7 +665,7 @@ export class WseServer {
    * @param {*} payload
    * @private
    */
-  _handle_stranger_message(conn, type, payload) {
+  _handle_stranger_message (conn, type, payload) {
     if (conn.valid_stat === CLIENT_STRANGER) {
       if (type === this.protocol.internal_types.hi) {
         conn.valid_stat = CLIENT_VALIDATING
@@ -675,14 +675,14 @@ export class WseServer {
 
         if (typeof this._cra_generator === 'function') {
           this._cra_generator(
-            conn.identity,
-            conn.meta,
-            quest => {
-              conn.challenge_quest = quest
-              conn.send(this.protocol.internal_types.challenge, quest)
-              conn.valid_stat = CLIENT_CHALLENGED
-            },
-            () => this._refuse_connection(conn)
+              conn.identity,
+              conn.meta,
+              quest => {
+                conn.challenge_quest = quest
+                conn.send(this.protocol.internal_types.challenge, quest)
+                conn.valid_stat = CLIENT_CHALLENGED
+              },
+              () => this._refuse_connection(conn),
           )
           return
         }
@@ -714,14 +714,14 @@ export class WseServer {
       accept,
       refuse,
       challenge:
-        typeof this._cra_generator === 'function'
-          ? { quest: conn.challenge_quest, response: conn.challenge_response }
-          : null,
+          typeof this._cra_generator === 'function'
+              ? { quest: conn.challenge_quest, response: conn.challenge_response }
+              : null,
       id: conn.conn_id,
     })
   }
 
-  _refuse_connection(conn) {
+  _refuse_connection (conn) {
     conn.ws_conn.close(1000, WSE_REASON.NOT_AUTHORIZED)
   }
 
@@ -733,7 +733,7 @@ export class WseServer {
    * @param {*} payload Client's payload
    * @private
    */
-  _identify_connection(conn, cid, welcome_payload, payload) {
+  _identify_connection (conn, cid, welcome_payload, payload) {
     if (!cid) this._refuse_connection(conn)
 
     let wasNewIdentity = false
@@ -743,11 +743,11 @@ export class WseServer {
     if (!client) {
       wasNewIdentity = true
       client = new WseIdentity(
-        {
-          meta: conn.meta,
-          cid,
-        },
-        this
+          {
+            meta: conn.meta,
+            cid,
+          },
+          this,
       )
       this.clients.set(cid, client)
     }
@@ -766,7 +766,7 @@ export class WseServer {
    * @param type
    * @param payload
    */
-  broadcast(type, payload) {
+  broadcast (type, payload) {
     for (const client of this.clients.values()) {
       client.send(type, payload)
     }
@@ -777,7 +777,7 @@ export class WseServer {
    * @param {string} id client ID
    * @param {WSE_REASON|string|Buffer} [reason] WSE_REASON
    */
-  dropClient(id, reason = WSE_REASON.NO_REASON) {
+  dropClient (id, reason = WSE_REASON.NO_REASON) {
     if (!this.clients.has(id)) return
 
     const client = this.clients.get(id)
@@ -794,7 +794,7 @@ export class WseServer {
    * @param {string} type message type
    * @param {*} [payload] optional payload
    */
-  send(cid, type, payload) {
+  send (cid, type, payload) {
     const client = this.clients.get(cid)
     if (client) {
       client.send(type, payload)
@@ -820,7 +820,7 @@ export class WseIdentity {
    * @param {object} [params.meta={}] - Additional metadata from connection
    * @param {WseServer} server - WSE server instance
    */
-  constructor({ cid, meta = {} }, server) {
+  constructor ({ cid, meta = {} }, server) {
     /** @type {string} Client identifier */
     this.cid = cid
 
@@ -840,7 +840,7 @@ export class WseIdentity {
    * @returns {WseIdentity}
    * @private
    */
-  _conn_add(conn) {
+  _conn_add (conn) {
     conn._identify_as(this)
 
     this.conns.set(conn.conn_id, conn)
@@ -857,7 +857,7 @@ export class WseIdentity {
    * @param {WSE_REASON|string} [reason]
    * @private
    */
-  _conn_drop(id, reason = WSE_REASON.NO_REASON) {
+  _conn_drop (id, reason = WSE_REASON.NO_REASON) {
     const conn = this.conns.get(id)
 
     if (!conn) throw new WseError(WSE_ERROR.NO_CLIENT_CONNECTION, { id })
@@ -888,7 +888,7 @@ export class WseIdentity {
    *   client.send('welcome', { message: 'Hello from all devices!' })
    * })
    */
-  send(type, payload) {
+  send (type, payload) {
     for (const conn of this.conns.values()) {
       if (conn.readyState !== WebSocket.OPEN) continue
       conn.send(type, payload)
@@ -899,7 +899,7 @@ export class WseIdentity {
    * Drop all connections for this client identity.
    * @param {WSE_REASON|string} [reason] - Reason for dropping connections
    */
-  drop(reason = WSE_REASON.NO_REASON) {
+  drop (reason = WSE_REASON.NO_REASON) {
     for (const key of this.conns.keys()) {
       this._conn_drop(key, reason)
     }
