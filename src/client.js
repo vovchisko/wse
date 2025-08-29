@@ -19,7 +19,7 @@ export class WseClient {
    * @param options
    * @param options.url - WS/WSS endpoint.
    * @param {number} [options.tO] - Timeout in seconds for RP calls.
-   * @param {Boolean} [options.re] - Reconnect In cause of 1006 code closure.
+   * @param {Boolean} [options.re] - Reconnect In cause of any of WseClient.re_on_codes[] code closure.
    * @param {WseJSON|object} [options.protocol] - Message processor.
    */
   constructor({ url, tO = 20, protocol, re = false, ...ws_options }) {

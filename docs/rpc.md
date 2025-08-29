@@ -38,8 +38,8 @@ Client registers procedures that server can call:
 client.register('getClientInfo', () => {
   return {
     userAgent: navigator.userAgent,
-    screenResolution: `${screen.width}x${screen.height}`,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    screenResolution: `${ screen.width }x${ screen.height }`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   }
 })
 
@@ -55,10 +55,10 @@ server.when.connected(async (conn) => {
   try {
     const clientInfo = await conn.call('getClientInfo')
     console.log('Client info:', clientInfo)
-    
-    await conn.call('showNotification', { 
+
+    await conn.call('showNotification', {
       message: 'Welcome back!',
-      type: 'success'
+      type: 'success',
     })
   } catch (error) {
     console.error('Client RPC failed:', error)

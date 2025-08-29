@@ -6,10 +6,10 @@ WSE allows you to implement custom message protocols while maintaining all the a
 
 ```javascript
 class CustomProtocol {
-  constructor() {
+  constructor () {
     // Protocol name used in WebSocket handshake
     this.name = 'custom-protocol'
-    
+
     // Required internal message types
     this.internal_types = Object.freeze({
       hi: '~wse:hi',               // Initial client greeting
@@ -22,27 +22,27 @@ class CustomProtocol {
   }
 
   // Pack message into [type, payload, stamp] format
-  pack({ type, payload = undefined, stamp = undefined }) {
-    return JSON.stringify([type, payload, stamp])
+  pack ({ type, payload = undefined, stamp = undefined }) {
+    return JSON.stringify([ type, payload, stamp ])
   }
 
   // Unpack message, returns [type, payload, stamp]
-  unpack(encoded) {
+  unpack (encoded) {
     return JSON.parse(encoded)
   }
 }
 
 // Use custom protocol in server
-const server = new WseServer({ 
-  port: 4200, 
+const server = new WseServer({
+  port: 4200,
   identify,
-  protocol: new CustomProtocol()
+  protocol: new CustomProtocol(),
 })
 
 // Use same protocol in client
 const client = new WseClient({
   url: 'ws://localhost:4200',
-  protocol: new CustomProtocol()
+  protocol: new CustomProtocol(),
 })
 ```
 

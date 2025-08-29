@@ -3,15 +3,15 @@
 ## Express Integration
 
 ```javascript
-import express from 'express'
-import { createServer } from 'http'
+import express                  from 'express'
+import { createServer }         from 'http'
 import { WseServer, WSE_ERROR } from 'wse'
 
 const app = express()
 const httpServer = createServer(app)
 
 // Create WSE server with noServer option
-const wseServer = new WseServer({ 
+const wseServer = new WseServer({
   noServer: true,  // Important: let Express handle the HTTP server
   identify: yourIdentifyHandler
 })
@@ -40,7 +40,7 @@ httpServer.on('upgrade', (request, socket, head) => {
 
 // Error handling
 wseServer.when.error((error, conn) => {
-  console.error(`WebSocket error: ${error.code}`, error.details)
+  console.error(`WebSocket error: ${ error.code }`, error.details)
   if (conn) {
     conn.send('error', { message: 'Internal server error' })
   }
@@ -55,13 +55,13 @@ httpServer.listen(3000, () => {
 ## Fastify Integration
 
 ```javascript
-import Fastify from 'fastify'
+import Fastify                  from 'fastify'
 import { WseServer, WSE_ERROR } from 'wse'
 
 const fastify = Fastify()
-const wseServer = new WseServer({ 
+const wseServer = new WseServer({
   noServer: true,
-  identify: yourIdentifyHandler
+  identify: yourIdentifyHandler,
 })
 
 // Handle HTTP routes
@@ -87,7 +87,7 @@ fastify.server.on('upgrade', (request, socket, head) => {
 
 // Error handling
 wseServer.when.error((error, conn) => {
-  console.error(`WebSocket error: ${error.code}`, error.details)
+  console.error(`WebSocket error: ${ error.code }`, error.details)
 })
 
 // Start server
