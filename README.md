@@ -52,6 +52,10 @@ Yes, it's all here, **[Docs and API Reference](docs/wse.md)**.
 
 Have fun! ❤️
 
+## License
+
+[MIT License](LICENSE) - Do whatever you like.
+
 ---
 
 Russian warship - go fuck yourself! 🖕
