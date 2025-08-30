@@ -4,7 +4,7 @@ import { make_stamp, WSE_ERROR, WseError } from './common.js'
  * Common RPC functionality shared between client and server
  */
 export class RpcManager {
-  constructor() {
+  constructor () {
     this._rps = new Map() // rp_name -> handler_function
     this._callbacks = new Map() // stamp -> callback_function
   }
@@ -12,12 +12,52 @@ export class RpcManager {
   /**
    * Normalize error for RPC response.
    * @param {*} err - Error to normalize
+   * @param {string} [rpcName] - RPC name that caused the error
+   * @param {*} [rpcPayload] - Original RPC payload
    * @returns {object} Normalized error object
    */
-  static normalizeError(err) {
-    return err.code && err.details
-      ? err
-      : { code: WSE_ERROR.RP_EXECUTION_FAILED, message: err.message || 'Unexpected error', details: err }
+  static normalizeError (err, rpcName, rpcPayload) {
+    // If already a WseError, add RPC context if not present
+    if (err.code && err.details) {
+      if (rpcName && !err.details.rpc) {
+        err.details.rpc = rpcName
+      }
+      if (rpcPayload !== undefined && !err.details.payload) {
+        err.details.payload = rpcPayload
+      }
+      return err
+    }
+    
+    // If error is a plain object (custom error), preserve it directly
+    // while adding RPC context
+    if (err && typeof err === 'object' && !err.message && !err.stack) {
+      const details = { ...err }
+      if (rpcName) details.rpc = rpcName
+      if (rpcPayload !== undefined) details.payload = rpcPayload
+      
+      return { 
+        code: WSE_ERROR.RP_EXECUTION_FAILED, 
+        message: 'RPC execution failed',
+        details 
+      }
+    }
+    
+    // For Error objects, serialize them properly for network transport
+    const details = { 
+      origin: {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+      }
+    }
+    if (rpcName) details.rpc = rpcName
+    if (rpcPayload !== undefined) details.payload = rpcPayload
+    
+    return { 
+      code: WSE_ERROR.RP_EXECUTION_FAILED, 
+      message: err.message || 'Unexpected error', 
+      details 
+    }
   }
 
   /**
@@ -25,7 +65,7 @@ export class RpcManager {
    * @param {string} rp - Remote procedure name
    * @param {Function} handler - Function to handle RPC calls
    */
-  register(rp, handler) {
+  register (rp, handler) {
     if (this._rps.has(rp)) throw new WseError(WSE_ERROR.RP_ALREADY_REGISTERED, { rp })
     this._rps.set(rp, handler)
   }
@@ -34,7 +74,7 @@ export class RpcManager {
    * Unregister existing RPC.
    * @param {string} rp - RPC name
    */
-  unregister(rp) {
+  unregister (rp) {
     if (!this._rps.has(rp)) throw new WseError(WSE_ERROR.RP_NOT_REGISTERED, { rp })
     this._rps.delete(rp)
   }
@@ -44,7 +84,7 @@ export class RpcManager {
    * @param {string} rp - RPC name
    * @returns {boolean}
    */
-  has(rp) {
+  has (rp) {
     return this._rps.has(rp)
   }
 
@@ -53,7 +93,7 @@ export class RpcManager {
    * @param {string} rp - RPC name
    * @returns {Function}
    */
-  get(rp) {
+  get (rp) {
     return this._rps.get(rp)
   }
 
@@ -64,7 +104,7 @@ export class RpcManager {
    * @param {boolean} isSuccess - Whether response is success or error
    * @returns {boolean} True if callback was found and executed
    */
-  handleResponse(stamp, payload, isSuccess) {
+  handleResponse (stamp, payload, isSuccess) {
     const callback = this._callbacks.get(stamp)
     if (callback) {
       this._callbacks.delete(stamp)
@@ -84,7 +124,7 @@ export class RpcManager {
    * @param {object} disconnectSignal - Signal for disconnect events
    * @returns {Promise<*>} RPC result promise
    */
-  call(protocol, rp, payload, timeout, sendFn, disconnectSignal) {
+  call (protocol, rp, payload, timeout, sendFn, disconnectSignal) {
     if (!rp || typeof rp !== 'string') throw new Error('rp_name not a string')
 
     return new Promise((resolve, reject) => {

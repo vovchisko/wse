@@ -4,14 +4,14 @@
  */
 
 import { EventEmitter } from 'tseep'
-import Signal from 'a-signal'
+import Signal           from 'a-signal'
 
 /** @type {typeof WebSocket} */
-import WS from 'isomorphic-ws'
+import WS               from 'isomorphic-ws'
 
-import { WseJSON } from './protocol.js'
+import { WseJSON }                                     from './protocol.js'
 import { WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
-import { RpcManager } from './rpc-man.js'
+import { RpcManager }                                  from './rpc-man.js'
 
 export class WseClient {
   /**
@@ -19,10 +19,10 @@ export class WseClient {
    * @param options
    * @param options.url - WS/WSS endpoint.
    * @param {number} [options.tO] - Timeout in seconds for RP calls.
-   * @param {Boolean} [options.re] - Reconnect In cause of 1006 code closure.
+   * @param {Boolean} [options.re] - Reconnect In cause of any of WseClient.re_on_codes[] code closure.
    * @param {WseJSON|object} [options.protocol] - Message processor.
    */
-  constructor({ url, tO = 20, protocol, re = false, ...ws_options }) {
+  constructor ({ url, tO = 20, protocol, re = false, ...ws_options }) {
     this.protocol = protocol || new WseJSON()
     this.url = url
     this.ws_options = ws_options
@@ -39,7 +39,7 @@ export class WseClient {
     this.closed = new Signal()
     this.re = re
     this.re_t0 = 1000
-    this.re_on_codes = [1005, 1006, 1011, 1012, 1013, 1014, 4000] // 4000 for jump
+    this.re_on_codes = [ 1005, 1006, 1011, 1012, 1013, 1014, 4000 ] // 4000 for jump
 
     this._rpcManager = new RpcManager()
 
@@ -102,7 +102,7 @@ export class WseClient {
     this._ws = null
   }
 
-  _update_status(status) {
+  _update_status (status) {
     this.updated.emit(status)
     this.status = status
   }
@@ -114,7 +114,7 @@ export class WseClient {
    * @returns {Promise<any>}
    * @throws {WseError}
    */
-  connect(identity = '', meta = {}) {
+  connect (identity = '', meta = {}) {
     if (this._ws) throw WSE_ERROR.CLIENT_ALREADY_CONNECTED
 
     this._update_status(WSE_STATUS.CONNECTING)
@@ -135,7 +135,7 @@ export class WseClient {
     }
 
     const handlePreMessage = message => {
-      const [type, payload] = this.protocol.unpack(message.data)
+      const [ type, payload ] = this.protocol.unpack(message.data)
       if (type === this.protocol.internal_types.challenge) {
         if (typeof this.challenge_solver === 'function') {
           this.challenge_solver(payload, solution => {
@@ -203,7 +203,7 @@ export class WseClient {
     })
   }
 
-  _wipe_ws() {
+  _wipe_ws () {
     this._ws.onopen = null
     this._ws.onmessage = null
     this._ws.onerror = null
@@ -237,7 +237,7 @@ export class WseClient {
    * @param {ChallengeHandler} challenge_solver - Function to handle authentication challenges
    * @throws {WseError} Throws WSE_ERROR.INVALID_CRA_HANDLER if solver is not a function
    */
-  challenge(challenge_solver) {
+  challenge (challenge_solver) {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
     } else {
@@ -252,8 +252,8 @@ export class WseClient {
    * @return {boolean|void}
    * @private
    */
-  _process_msg(message) {
-    let [type, payload, stamp] = this.protocol.unpack(message.data)
+  _process_msg (message) {
+    let [ type, payload, stamp ] = this.protocol.unpack(message.data)
 
     // Handle RPC responses - direct callback execution
     if (type === this.protocol.internal_types.response) {
@@ -270,11 +270,11 @@ export class WseClient {
       } else {
         // RPC not registered - send error response
         this._ws.send(
-          this.protocol.pack({
-            type: this.protocol.internal_types.response_error,
-            payload: { code: WSE_ERROR.RP_NOT_REGISTERED },
-            stamp: stamp,
-          })
+            this.protocol.pack({
+              type: this.protocol.internal_types.response_error,
+              payload: { code: WSE_ERROR.RP_NOT_REGISTERED },
+              stamp: stamp,
+            }),
         )
         return
       }
@@ -284,38 +284,38 @@ export class WseClient {
     return this.channel.emit(type, payload, stamp) || this.ignored.emit(type, payload, stamp)
   }
 
-  _handle_incoming_call(type, payload, stamp) {
+  _handle_incoming_call (type, payload, stamp) {
     const procedure = this._rpcManager.get(type)
 
     const rp_wrap = async () => {
       const result = await procedure(payload)
       this._ws.send(
-        this.protocol.pack({
-          type: this.protocol.internal_types.response,
-          payload: result,
-          stamp: stamp,
-        })
+          this.protocol.pack({
+            type: this.protocol.internal_types.response,
+            payload: result,
+            stamp: stamp,
+          }),
       )
     }
 
     rp_wrap().catch(err => {
-      const errorPayload = RpcManager.normalizeError(err)
+      const errorPayload = RpcManager.normalizeError(err, type, payload)
 
       this._ws.send(
-        this.protocol.pack({
-          type: this.protocol.internal_types.response_error,
-          payload: errorPayload,
-          stamp: stamp,
-        })
+          this.protocol.pack({
+            type: this.protocol.internal_types.response_error,
+            payload: errorPayload,
+            stamp: stamp,
+          }),
       )
 
       this.error.emit(
-        new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
-          type,
-          payload,
-          stamp,
-          err,
-        })
+          new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
+            type,
+            payload,
+            stamp,
+            err,
+          }),
       )
     })
   }
@@ -326,7 +326,7 @@ export class WseClient {
    * @param {string} type
    * @param {*} [payload]
    */
-  send(type, payload) {
+  send (type, payload) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       this._ws.send(this.protocol.pack({ type, payload }))
     } else {
@@ -341,7 +341,7 @@ export class WseClient {
    *
    * @param {WSE_REASON|string} [reason]
    */
-  close(reason = WSE_REASON.BY_CLIENT) {
+  close (reason = WSE_REASON.BY_CLIENT) {
     if (this._ws) this._ws.close(1000, reason)
   }
 
@@ -362,7 +362,7 @@ export class WseClient {
    * // Jump with new authentication
    * await client.jump('ws://boss.game.com:4200', { token: 'boss-level-token' })
    */
-  jump(newUrl, identity = '', meta = {}) {
+  jump (newUrl, identity = '', meta = {}) {
     if (this._ws) {
       this.url = newUrl
       this.ready.forget()
@@ -398,7 +398,7 @@ export class WseClient {
    *   }
    * }
    */
-  async call(rp, payload) {
+  async call (rp, payload) {
     if (this._ws && this._ws.readyState === WS.OPEN) {
       return this._rpcManager.call(this.protocol, rp, payload, this.tO, data => this._ws.send(data), this.closed)
     } else {
@@ -424,7 +424,7 @@ export class WseClient {
    *   return result
    * })
    */
-  register(rp, handler) {
+  register (rp, handler) {
     this._rpcManager.register(rp, handler)
   }
 
@@ -432,7 +432,7 @@ export class WseClient {
    * Unregister existing RP.
    * @param {string} rp - RP name
    */
-  unregister(rp) {
+  unregister (rp) {
     this._rpcManager.unregister(rp)
   }
 }

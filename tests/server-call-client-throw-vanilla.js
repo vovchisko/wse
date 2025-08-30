@@ -18,10 +18,10 @@ execute('server call client throw vanilla', async (success, fail) => {
       await conn.call('test-rp-custom', { value: 1 })
       fail('no errors!')
     } catch (e) {
-      if (e.code === WSE_ERROR.RP_EXECUTION_FAILED) {
-        success(`correct error ${e.code}`)
+      if (e.code === WSE_ERROR.RP_EXECUTION_FAILED && e.details.rpc === 'test-rp-custom') {
+        success(`RPC '${e.details.rpc}' failed correctly`)
       } else {
-        fail(`invalid error code ${e.code}`)
+        fail(`missing RPC name: code=${e.code}, rpc=${e.details?.rpc}`)
       }
     }
   })
