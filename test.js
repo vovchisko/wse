@@ -25,6 +25,7 @@ runner([
   { script: './tests/ready-event.js' },
   { script: './tests/rp-call.js' },
   { script: './tests/rp-disconnect.js' },
+  { script: './tests/rp-disconnect-reason.js' },
   { script: './tests/rp-throw-custom.js' },
   { script: './tests/rp-throw-not-registered.js' },
   { script: './tests/rp-throw-vanilla.js' },

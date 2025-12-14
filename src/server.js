@@ -121,7 +121,7 @@ export class WseConnection {
    * Close this specific connection.
    * @param {string|WSE_REASON} [reason] - Reason for closing connection
    */
-  drop (reason = WSE_REASON.NO_REASON) {
+  drop (reason = WSE_REASON.BY_SERVER) {
     this.ws_conn.close(1000, String(reason))
   }
 
@@ -492,7 +492,7 @@ export class WseServer {
           error.message_from = conn.cid ? `${ conn.cid }#${ conn.conn_id }` : 'stranger'
           this.error.emit(err, conn)
           if (conn.cid && this.clients.has(conn.cid)) {
-            this.clients.get(conn.cid)._conn_drop(conn.conn_id, WSE_REASON.PROTOCOL_ERR)
+            this.clients.get(conn.cid)._conn_drop(conn.conn_id, 1000, WSE_REASON.PROTOCOL_ERR)
           } else {
             conn.ws_conn.removeAllListeners()
             conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
@@ -503,7 +503,7 @@ export class WseServer {
       conn.ws_conn.on('close', (code, reason) => {
         if (conn.cid && this.clients.has(conn.cid)) {
           const client = this.clients.get(conn.cid)
-          client._conn_drop(conn.conn_id, reason)
+          client._conn_drop(conn.conn_id, code, reason)
         } else {
           this.disconnected.emit(conn, code, String(reason))
         }
@@ -846,7 +846,7 @@ export class WseIdentity {
     this.conns.set(conn.conn_id, conn)
     if (this.server.connPerUser < this.conns.size) {
       const key_to_delete = this.conns[Symbol.iterator]().next().value[0]
-      this._conn_drop(key_to_delete, WSE_REASON.CLIENTS_CONCURRENCY)
+      this._conn_drop(key_to_delete, 1000, WSE_REASON.CLIENTS_CONCURRENCY)
     }
     return this
   }
@@ -854,10 +854,11 @@ export class WseIdentity {
   /**
    * Drop connection by it's ID.
    * @param {string} id
+   * @param {number} [code] - WebSocket close code
    * @param {WSE_REASON|string} [reason]
    * @private
    */
-  _conn_drop (id, reason = WSE_REASON.NO_REASON) {
+  _conn_drop (id, code = 1000, reason = WSE_REASON.BY_SERVER) {
     const conn = this.conns.get(id)
 
     if (!conn) throw new WseError(WSE_ERROR.NO_CLIENT_CONNECTION, { id })
@@ -865,12 +866,12 @@ export class WseIdentity {
     conn.ws_conn.removeAllListeners()
 
     if (conn.readyState === WebSocket.CONNECTING || conn.readyState === WebSocket.OPEN) {
-      conn.ws_conn.close(1000, reason)
+      conn.ws_conn.close(code, reason)
     }
 
     this.conns.delete(id)
 
-    this.server.disconnected.emit(conn, 1000, String(reason))
+    this.server.disconnected.emit(conn, code, String(reason))
 
     if (this.conns.size === 0) {
       this.server.dropClient(this.cid, reason)
@@ -899,9 +900,9 @@ export class WseIdentity {
    * Drop all connections for this client identity.
    * @param {WSE_REASON|string} [reason] - Reason for dropping connections
    */
-  drop (reason = WSE_REASON.NO_REASON) {
+  drop (reason = WSE_REASON.BY_SERVER) {
     for (const key of this.conns.keys()) {
-      this._conn_drop(key, reason)
+      this._conn_drop(key, 1000, reason)
     }
   }
 }

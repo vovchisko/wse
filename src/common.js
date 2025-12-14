@@ -65,4 +65,15 @@ export class WseError extends Error {
     this.code = code
     this.details = details
   }
+
+  toString () {
+    const parts = [this.code]
+    if (this.details.rpc) parts.push(`rpc:${this.details.rpc}`)
+    if (this.details.origin?.message) parts.push(this.details.origin.message)
+    return `WseError: ${parts.join(' | ')}`
+  }
+
+  toJSON () {
+    return { code: this.code, details: this.details }
+  }
 }

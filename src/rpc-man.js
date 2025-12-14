@@ -125,7 +125,7 @@ export class RpcManager {
    * @returns {Promise<*>} RPC result promise
    */
   call (protocol, rp, payload, timeout, sendFn, disconnectSignal) {
-    if (!rp || typeof rp !== 'string') throw new Error('rp_name not a string')
+    if (!rp || typeof rp !== 'string') throw new WseError(WSE_ERROR.RP_NOT_REGISTERED, { rp })
 
     return new Promise((resolve, reject) => {
       const stamp = make_stamp()
