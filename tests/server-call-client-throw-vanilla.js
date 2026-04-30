@@ -3,7 +3,7 @@ import { execute } from 'test-a-bit'
 import { identify, SECRET, WS_PORT, WS_URL } from './_helpers.js'
 import { WseServer } from '../src/server.js'
 import { WseClient } from '../src/client.js'
-import { WSE_ERROR } from '../node.js'
+import { WSE_ERROR } from '../main.js'
 
 execute('server call client throw vanilla', async (success, fail) => {
   const server = new WseServer({ port: WS_PORT, identify })

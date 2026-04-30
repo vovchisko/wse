@@ -60,17 +60,11 @@ export class WseError extends Error {
    * @param {object} details
    */
   constructor (code, details = {}) {
-    super(code)
+    super([code, details?.rpc && `rpc:${details.rpc}`, details?.origin?.message].filter(Boolean).join('\n -> '))
+    this.name = 'WseError'
     this.type = 'wse-error'
     this.code = code
     this.details = details
-  }
-
-  toString () {
-    const parts = [this.code]
-    if (this.details.rpc) parts.push(`rpc:${this.details.rpc}`)
-    if (this.details.origin?.message) parts.push(this.details.origin.message)
-    return `WseError: ${parts.join(' | ')}`
   }
 
   toJSON () {

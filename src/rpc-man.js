@@ -1,5 +1,11 @@
 import { make_stamp, WSE_ERROR, WseError } from './common.js'
 
+const fail = (code, details, traceStack) => {
+  const e = new WseError(code, details)
+  if (traceStack) e.stack = `${e.name}: ${e.message}\n${traceStack}`
+  return e
+}
+
 /**
  * Common RPC functionality shared between client and server
  */
@@ -127,6 +133,10 @@ export class RpcManager {
   call (protocol, rp, payload, timeout, sendFn, disconnectSignal) {
     if (!rp || typeof rp !== 'string') throw new WseError(WSE_ERROR.RP_NOT_REGISTERED, { rp })
 
+    // Capture user call-site here; async rejection later loses it otherwise.
+    const trace = {}
+    Error.captureStackTrace?.(trace, RpcManager.prototype.call)
+
     return new Promise((resolve, reject) => {
       const stamp = make_stamp()
       let timeoutHandle
@@ -143,7 +153,7 @@ export class RpcManager {
         if (isSuccess) {
           resolve(result)
         } else {
-          reject(new WseError(result.code, result.details))
+          reject(fail(result.code, result.details, trace.stack))
         }
       }
 
@@ -152,13 +162,13 @@ export class RpcManager {
       // Handle disconnect - necessary for proper error reporting
       disconnectBind = disconnectSignal.once((...args) => {
         cleanup()
-        reject(new WseError(WSE_ERROR.RP_DISCONNECT, { disconnected: args }))
+        reject(fail(WSE_ERROR.RP_DISCONNECT, { disconnected: args }, trace.stack))
       })
 
       if (timeout > 0) {
         timeoutHandle = setTimeout(() => {
           cleanup()
-          reject(new WseError(WSE_ERROR.RP_TIMEOUT))
+          reject(fail(WSE_ERROR.RP_TIMEOUT, undefined, trace.stack))
         }, timeout * 1000)
       }
 
