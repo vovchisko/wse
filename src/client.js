@@ -3,10 +3,8 @@
  * @import { WseJSON } from './protocol.js'
  */
 
-import * as tseep from 'tseep'
+import { EventEmitter } from 'tseep'
 import Signal           from 'a-signal'
-
-const { EventEmitter } = tseep
 
 /** @type {typeof WebSocket} */
 import WS               from 'isomorphic-ws'
