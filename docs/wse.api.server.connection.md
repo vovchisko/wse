@@ -26,7 +26,12 @@ Reference to WseIdentity (the user)
 
 ### conn.remote_addr
 
-Client IP address
+Client IP address.
+
+> **Do not trust this for authorization.** It is read from the `x-forwarded-for`
+> header when present, falling back to the socket address. Any client can set that
+> header, so unless the server sits behind a proxy that overwrites it, the value is
+> attacker-controlled. Use it for logging, not for access control.
 
 ### conn.readyState
 

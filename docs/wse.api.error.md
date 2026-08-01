@@ -4,7 +4,7 @@
 
 All WSE errors follow this structure:
 
-```javascript
+```json5
 {
   code: 'ERROR_CODE',     // String error identifier
   message: 'Description', // Human readable message
@@ -51,7 +51,7 @@ RPC errors include the RPC name and call details:
 try {
   await client.call('getUserData', { userId: 123 })
 } catch (error) {
-  console.log('RPC name:', error.details.rpc)     // 'getUserData'
+  console.log('RPC name:', error.details.rp)     // 'getUserData'
   console.log('Payload:', error.details.payload)  // { userId: 123 }
   console.log('Error name:', error.details.origin.name)    // 'Error'
   console.log('Error message:', error.details.origin.message) // Original message
@@ -68,7 +68,7 @@ try {
 } catch (error) {
   console.log('Custom code:', error.details.code)     // 'INVALID_USER'
   console.log('User ID:', error.details.userId)       // 123
-  console.log('RPC name:', error.details.rpc)         // 'validateUser'
+  console.log('RPC name:', error.details.rp)         // 'validateUser'
   console.log('Payload:', error.details.payload)      // { userId: 123 }
   console.log('Origin:', error.details.origin)        // undefined (custom object preserved directly)
 }
@@ -83,7 +83,7 @@ try {
 } catch (error) {
   console.log('Code:', error.code)                 // 'CUSTOM_CODE'
   console.log('Field:', error.details.field)      // 'value'
-  console.log('RPC name:', error.details.rpc)     // 'complexOp'
+  console.log('RPC name:', error.details.rp)     // 'complexOp'
   console.log('Payload:', error.details.payload)  // { data: 'test' }
   console.log('Origin:', error.details.origin)    // undefined (already WseError)
 }

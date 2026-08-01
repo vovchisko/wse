@@ -44,6 +44,20 @@ runner([
   { script: './tests/server-call-client-timeout.js' },
   { script: './tests/custom-protocol.js' },
   { script: './tests/jump.js' },
+  { script: './tests/rp-throw-primitive.js' },
+  { script: './tests/client-already-connected.js' },
+  { script: './tests/broadcast-packs-once.js' },
+  { script: './tests/case-late-response-pingpong.js' },
+  { script: './tests/case-client-rp-after-close.js' },
+  { script: './tests/case-drop-client-left-twice.js' },
+  { script: './tests/case-malformed-response-hangs.js' },
+  { script: './tests/case-cra-junk-reaches-identify.js' },
+  { script: './tests/case-conn-call-disconnect-guard.js' },
+  { script: './tests/case-cra-null-solution.js' },
+  { script: './tests/case-reconnect-refused-hangs.js' },
+  { script: './tests/case-status-update-order.js' },
+  { script: './tests/case-connect-reject-type.js' },
+  { script: './tests/case-call-send-throw-leak.js' },
 ])
   .then(res => {
     const failed = res

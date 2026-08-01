@@ -118,6 +118,16 @@ export class WseConnection {
   }
 
   /**
+   * Send an already-serialized frame to this connection.
+   * Lets broadcast/multi-device sends serialize once and reuse the result.
+   * @param {string|Buffer|ArrayBuffer} packed - Pre-packed message produced by protocol.pack()
+   * @private
+   */
+  _send_packed (packed) {
+    this.ws_conn.send(packed)
+  }
+
+  /**
    * Close this specific connection.
    * @param {string|WSE_REASON} [reason] - Reason for closing connection
    */
@@ -151,14 +161,18 @@ export class WseConnection {
    */
   async call (rp, payload) {
     if (this.ws_conn && this.ws_conn.readyState === 1) {
-      // Create a signal that filters disconnect events for this specific connection
+      // Create a signal that filters disconnect events for this specific connection.
+      // Subscribes with on(), not once(): a-signal drops a `once` bind after the
+      // first emission whatever the callback does, so any other client's disconnect
+      // would silently disarm this guard and leave the call hanging until tO.
       const connectionDisconnectSignal = {
         once: callback => {
-          return this.server.disconnected.once((conn, code, reason) => {
-            if (conn === this) {
-              callback(code, reason)
-            }
+          const bind = this.server.disconnected.on((conn, code, reason) => {
+            if (conn !== this) return
+            bind.off()
+            callback(code, reason)
           })
+          return bind
         },
       }
 
@@ -490,7 +504,7 @@ export class WseServer {
         } catch (err) {
           const error = err.type !== 'wse-error' ? new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }) : err
           error.message_from = conn.cid ? `${ conn.cid }#${ conn.conn_id }` : 'stranger'
-          this.error.emit(err, conn)
+          this.error.emit(error, conn)
           if (conn.cid && this.clients.has(conn.cid)) {
             this.clients.get(conn.cid)._conn_drop(conn.conn_id, 1000, WSE_REASON.PROTOCOL_ERR)
           } else {
@@ -539,7 +553,7 @@ export class WseServer {
     }
 
     // RESOLVING IPV4 REMOTE ADDR
-    conn.remote_addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress || ''
+    conn.remote_addr = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || ''
   }
 
   /**
@@ -562,12 +576,10 @@ export class WseServer {
    * @private
    */
   _handle_valid_call (conn, type, payload, stamp) {
-    // Handle RPC responses - direct callback execution
-    if (type === this.protocol.internal_types.response) {
-      if (this._rpcManager.handleResponse(stamp, payload, true)) return
-    }
-    if (type === this.protocol.internal_types.response_error) {
-      if (this._rpcManager.handleResponse(stamp, payload, false)) return
+    // Responses never fall through — see the matching note in client._process_msg().
+    if (type === this.protocol.internal_types.response || type === this.protocol.internal_types.response_error) {
+      this._rpcManager.handleResponse(stamp, payload, type === this.protocol.internal_types.response)
+      return
     }
 
     // Handle incoming RPC calls
@@ -575,7 +587,7 @@ export class WseServer {
       conn.ws_conn.send(
           this.protocol.pack({
             type: this.protocol.internal_types.response_error,
-            payload: { code: WSE_ERROR.RP_NOT_REGISTERED },
+            payload: RpcManager.normalizeError(new WseError(WSE_ERROR.RP_NOT_REGISTERED), type),
             stamp: stamp,
           }),
       )
@@ -693,15 +705,18 @@ export class WseServer {
     }
 
     if (conn.valid_stat === CLIENT_CHALLENGED) {
-      if (type === this.protocol.internal_types.challenge) {
-        conn.challenge_response = payload
-      } else {
+      // Bail out: without the return, a closing connection still reached identify()
+      // with a null response, and a lax handler could accept() a ghost identity.
+      if (type !== this.protocol.internal_types.challenge) {
         conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
+        return
       }
+
+      conn.challenge_response = payload
     }
 
     const accept = (cid, welcome_payload) => {
-      this._identify_connection(conn, cid, welcome_payload, payload)
+      this._identify_connection(conn, cid, welcome_payload)
     }
 
     const refuse = () => {
@@ -730,11 +745,10 @@ export class WseServer {
    * @param {WseConnection} conn
    * @param {string} cid Resolved user identifier.
    * @param {*} welcome_payload Payload from the server.
-   * @param {*} payload Client's payload
    * @private
    */
-  _identify_connection (conn, cid, welcome_payload, payload) {
-    if (!cid) this._refuse_connection(conn)
+  _identify_connection (conn, cid, welcome_payload) {
+    if (!cid) return this._refuse_connection(conn)
 
     let wasNewIdentity = false
 
@@ -756,7 +770,10 @@ export class WseServer {
 
     conn.send(this.protocol.internal_types.welcome, welcome_payload)
 
-    if (wasNewIdentity) this.joined.emit(client, payload.meta || {})
+    // conn.meta, not the incoming frame: in the CRA flow the frame is the challenge
+    // solution, so reading .meta off it lost the real meta — and threw outright
+    // whenever the client solved with null.
+    if (wasNewIdentity) this.joined.emit(client, conn.meta)
 
     this.connected.emit(conn)
   }
@@ -767,8 +784,9 @@ export class WseServer {
    * @param payload
    */
   broadcast (type, payload) {
+    const packed = this.protocol.pack({ type, payload })
     for (const client of this.clients.values()) {
-      client.send(type, payload)
+      client._send_packed(packed)
     }
   }
 
@@ -778,14 +796,18 @@ export class WseServer {
    * @param {WSE_REASON|string|Buffer} [reason] WSE_REASON
    */
   dropClient (id, reason = WSE_REASON.NO_REASON) {
-    if (!this.clients.has(id)) return
-
     const client = this.clients.get(id)
 
-    if (client.conns.size) client.drop(reason)
-    this.left.emit(client, 1000, String(reason))
+    if (!client) return
 
-    this.clients.delete(client.cid)
+    // Remove first: dropping the last connection re-enters dropClient() from
+    // _conn_drop(), and the guard above has to stop that recursion before it
+    // emits `left` a second time.
+    this.clients.delete(id)
+
+    if (client.conns.size) client.drop(reason)
+
+    this.left.emit(client, 1000, String(reason))
   }
 
   /**
@@ -890,9 +912,18 @@ export class WseIdentity {
    * })
    */
   send (type, payload) {
+    this._send_packed(this.server.protocol.pack({ type, payload }))
+  }
+
+  /**
+   * Send an already-serialized frame to all open connections of this user.
+   * @param {string|Buffer|ArrayBuffer} packed - Pre-packed message produced by protocol.pack()
+   * @private
+   */
+  _send_packed (packed) {
     for (const conn of this.conns.values()) {
       if (conn.readyState !== WebSocket.OPEN) continue
-      conn.send(type, payload)
+      conn._send_packed(packed)
     }
   }
 

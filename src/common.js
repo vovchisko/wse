@@ -1,39 +1,41 @@
 export const WSE_REASON = Object.freeze({
-  NO_REASON: '',
+  NO_REASON:           '',
   CLIENTS_CONCURRENCY: 'wse.clients-concurrency',
-  NOT_AUTHORIZED: 'wse.not-authorized',
-  PROTOCOL_ERR: 'wse.protocol-error',
-  BY_CLIENT: 'wse.by-client',
-  BY_SERVER: 'wse.by-server',
+  NOT_AUTHORIZED:      'wse.not-authorized',
+  PROTOCOL_ERR:        'wse.protocol-error',
+  BY_CLIENT:           'wse.by-client',
+  BY_SERVER:           'wse.by-server',
 })
 
-export const WSE_STATUS = {
-  IDLE: 'IDLE',
-  OFFLINE: 'OFFLINE',
-  READY: 'READY',
-  CONNECTING: 'CONNECTING',
+export const WSE_STATUS = Object.freeze({
+  IDLE:          'IDLE',
+  OFFLINE:       'OFFLINE',
+  READY:         'READY',
+  CONNECTING:    'CONNECTING',
   RE_CONNECTING: 'RE_CONNECTING',
-}
+})
 
 export const WSE_ERROR = Object.freeze({
   // client
-  INVALID_CRA_HANDLER: 'wse.client.invalid-cra-handler',
-  RP_TIMEOUT: 'wse.client.rp.timeout',
-  RP_DISCONNECT: 'wse.client.rp.disconnect',
+  INVALID_CRA_HANDLER:      'wse.client.invalid-cra-handler',
+  RP_TIMEOUT:               'wse.client.rp.timeout',
+  RP_DISCONNECT:            'wse.client.rp.disconnect',
+  RP_SEND_FAILED:           'wse.client.rp.send-failed',
   CLIENT_ALREADY_CONNECTED: 'wse.client.already-connected',
-  WS_CLIENT_ERROR: 'wse.client.ws-error',
-  NOT_AUTHORIZED: 'wse.not-authorized',
-  CONNECTION_NOT_READY: 'wse.client.not-ready',
+  WS_CLIENT_ERROR:          'wse.client.ws-error',
+  NOT_AUTHORIZED:           'wse.not-authorized',
+  CONNECTION_NOT_READY:     'wse.client.not-ready',
+  CONNECTION_CLOSED:        'wse.client.connection-closed',
 
   //server
-  NO_CLIENT_CONNECTION: 'wse.server.client.connection-missing',
+  NO_CLIENT_CONNECTION:     'wse.server.client.connection-missing',
   IDENTIFY_HANDLER_MISSING: 'wse.server.auth.identify-handler-missing',
-  INVALID_CRA_GENERATOR: 'wse.server.auth.invalid-cra-generator',
-  RP_EXECUTION_FAILED: 'wse.server.rp.failed',
-  RP_NOT_REGISTERED: 'wse.server.rp.not-registered',
-  RP_ALREADY_REGISTERED: 'wse.server.rp.already-registered',
-  PROTOCOL_VIOLATION: 'wse.server.protocol-violation',
-  CONNECTION_ERROR: 'wse.server.connection-error',
+  INVALID_CRA_GENERATOR:    'wse.server.auth.invalid-cra-generator',
+  RP_EXECUTION_FAILED:      'wse.server.rp.failed',
+  RP_NOT_REGISTERED:        'wse.server.rp.not-registered',
+  RP_ALREADY_REGISTERED:    'wse.server.rp.already-registered',
+  PROTOCOL_VIOLATION:       'wse.server.protocol-violation',
+  CONNECTION_ERROR:         'wse.server.connection-error',
   MESSAGE_PROCESSING_ERROR: 'wse.server.msg-processing-error',
 })
 
@@ -60,7 +62,7 @@ export class WseError extends Error {
    * @param {object} details
    */
   constructor (code, details = {}) {
-    super([code, details?.rpc && `rpc:${details.rpc}`, details?.origin?.message].filter(Boolean).join('\n -> '))
+    super([ code, details?.rp && `rp:${ details.rp }`, details?.origin?.message ].filter(Boolean).join('\n -> '))
     this.name = 'WseError'
     this.type = 'wse-error'
     this.code = code

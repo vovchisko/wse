@@ -34,6 +34,12 @@ Connect and authenticate with server (Promise)
 - `identity` - Authentication data (any)
 - `meta` - Connection metadata (object, optional)
 
+Resolves with the server's welcome payload. Rejects with a
+[WseError](./wse.api.error.md) when the connection closes before it becomes ready —
+`NOT_AUTHORIZED` if the server refused, `CONNECTION_CLOSED` otherwise, with the close
+code and reason in `error.details`. With `re: true` the promise still rejects on a
+close that will not be retried; retried closes keep it pending until the client is ready.
+
 ### client.jump(newUrl, identity, meta)
 
 Switch to different server endpoint (Promise). Closes current connection with code 4000.

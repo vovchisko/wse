@@ -19,10 +19,10 @@ execute('rp throw vanilla', async (success, fail) => {
     await client.call('test-rp-custom', { value: 1 })
     fail('no errors!')
   } catch (e) {
-    if (e.code === WSE_ERROR.RP_EXECUTION_FAILED && e.details.rpc === 'test-rp-custom') {
-      success(`RPC '${e.details.rpc}' failed correctly`)
+    if (e.code === WSE_ERROR.RP_EXECUTION_FAILED && e.details.rp === 'test-rp-custom') {
+      success(`RPC '${e.details.rp}' failed correctly`)
     } else {
-      fail(`missing RPC name: code=${e.code}, rpc=${e.details?.rpc}`)
+      fail(`missing RPC name: code=${e.code}, rp=${e.details?.rp}`)
     }
   }
 })

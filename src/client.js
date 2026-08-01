@@ -3,7 +3,9 @@
  * @import { WseJSON } from './protocol.js'
  */
 
-import { EventEmitter } from 'tseep'
+// ee-safe: same API, no `new Function` codegen — browsers with a strict CSP
+// (script-src without 'unsafe-eval') kill the baked emitter on first emit.
+import { EventEmitter } from 'tseep/lib/ee-safe.js'
 import Signal           from 'a-signal'
 
 /** @type {typeof WebSocket} */
@@ -103,8 +105,8 @@ export class WseClient {
   }
 
   _update_status (status) {
-    this.updated.emit(status)
     this.status = status
+    this.updated.emit(status)
   }
 
   /**
@@ -115,7 +117,11 @@ export class WseClient {
    * @throws {WseError}
    */
   connect (identity = '', meta = {}) {
-    if (this._ws) throw WSE_ERROR.CLIENT_ALREADY_CONNECTED
+    if (this._ws) {
+      const err = new WseError(WSE_ERROR.CLIENT_ALREADY_CONNECTED)
+      Error.captureStackTrace?.(err, this.connect)
+      throw err
+    }
 
     this._update_status(WSE_STATUS.CONNECTING)
 
@@ -170,12 +176,20 @@ export class WseClient {
 
       this._wipe_ws()
 
-      if (!this.re && _reject) {
-        _reject(String(event.reason))
+      const will_retry = (this.re && this.re_on_codes.includes(event.code)) || event.code === 4000
+
+      // Settle whatever connect() is still awaiting. A close that won't be retried
+      // is terminal — with re:true a refusal closes with 1000, which is not in
+      // re_on_codes, so the promise used to stay pending forever.
+      if (!will_retry && _reject) {
+        const reason = String(event.reason)
+        const code = reason === WSE_REASON.NOT_AUTHORIZED ? WSE_ERROR.NOT_AUTHORIZED : WSE_ERROR.CONNECTION_CLOSED
+
+        _reject(new WseError(code, { code: event.code, reason }))
         _flushPromise()
       }
 
-      if ((this.re && this.re_on_codes.includes(event.code)) || event.code === 4000) {
+      if (will_retry) {
         const in_s = event.code === 4000 ? 0 : this.re_t0 + Math.random() * 1000
         this._update_status(WSE_STATUS.RE_CONNECTING)
         setTimeout(tryConnect, in_s)
@@ -192,13 +206,8 @@ export class WseClient {
     }
 
     return new Promise((resolve, reject) => {
-      if (this.re) {
-        _resolve = resolve
-        _reject = null // If reconnect is enabled, never reject the promise
-      } else {
-        _resolve = resolve
-        _reject = reject
-      }
+      _resolve = resolve
+      _reject = reject // handleClose decides what is terminal; handleError still defers to `re`
       tryConnect()
     })
   }
@@ -241,7 +250,9 @@ export class WseClient {
     if (typeof challenge_solver === 'function') {
       this.challenge_solver = challenge_solver
     } else {
-      throw new WseError(WSE_ERROR.INVALID_CRA_HANDLER)
+      const err = new WseError(WSE_ERROR.INVALID_CRA_HANDLER)
+      Error.captureStackTrace?.(err, this.challenge)
+      throw err
     }
   }
 
@@ -255,12 +266,12 @@ export class WseClient {
   _process_msg (message) {
     let [ type, payload, stamp ] = this.protocol.unpack(message.data)
 
-    // Handle RPC responses - direct callback execution
-    if (type === this.protocol.internal_types.response) {
-      if (this._rpcManager.handleResponse(stamp, payload, true)) return
-    }
-    if (type === this.protocol.internal_types.response_error) {
-      if (this._rpcManager.handleResponse(stamp, payload, false)) return
+    // Responses never fall through. An unmatched stamp (a reply that arrived after
+    // its call timed out) must be dropped: answering it with response_error makes
+    // the peer answer back, and the two sides trade frames forever.
+    if (type === this.protocol.internal_types.response || type === this.protocol.internal_types.response_error) {
+      this._rpcManager.handleResponse(stamp, payload, type === this.protocol.internal_types.response)
+      return
     }
 
     // If stamp exists, it's an incoming RPC call from server
@@ -272,7 +283,7 @@ export class WseClient {
         this._ws.send(
             this.protocol.pack({
               type: this.protocol.internal_types.response_error,
-              payload: { code: WSE_ERROR.RP_NOT_REGISTERED },
+              payload: RpcManager.normalizeError(new WseError(WSE_ERROR.RP_NOT_REGISTERED), type),
               stamp: stamp,
             }),
         )
@@ -287,27 +298,21 @@ export class WseClient {
   _handle_incoming_call (type, payload, stamp) {
     const procedure = this._rpcManager.get(type)
 
+    // The socket can die while an async handler is still running. There is nowhere
+    // to reply to then, and reaching for a wiped this._ws would throw inside the
+    // catch below, escaping as an unhandled rejection.
+    const reply = (response_type, response_payload) => {
+      if (!this._ws || this._ws.readyState !== WS.OPEN) return
+      this._ws.send(this.protocol.pack({ type: response_type, payload: response_payload, stamp }))
+    }
+
     const rp_wrap = async () => {
       const result = await procedure(payload)
-      this._ws.send(
-          this.protocol.pack({
-            type: this.protocol.internal_types.response,
-            payload: result,
-            stamp: stamp,
-          }),
-      )
+      reply(this.protocol.internal_types.response, result)
     }
 
     rp_wrap().catch(err => {
-      const errorPayload = RpcManager.normalizeError(err, type, payload)
-
-      this._ws.send(
-          this.protocol.pack({
-            type: this.protocol.internal_types.response_error,
-            payload: errorPayload,
-            stamp: stamp,
-          }),
-      )
+      reply(this.protocol.internal_types.response_error, RpcManager.normalizeError(err, type, payload))
 
       this.error.emit(
           new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
@@ -331,6 +336,7 @@ export class WseClient {
       this._ws.send(this.protocol.pack({ type, payload }))
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
+      Error.captureStackTrace?.(err, this.send)
       this.error.emit(err)
       throw err
     }
@@ -403,6 +409,7 @@ export class WseClient {
       return this._rpcManager.call(this.protocol, rp, payload, this.tO, data => this._ws.send(data), this.closed)
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
+      Error.captureStackTrace?.(err, this.call)
       this.error.emit(err)
       throw err
     }

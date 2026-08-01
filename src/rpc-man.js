@@ -6,6 +6,12 @@ const fail = (code, details, traceStack) => {
   return e
 }
 
+const withCtx = (details, rp, payload) => {
+  if (rp && !details.rp) details.rp = rp
+  if (payload !== undefined && !details.payload) details.payload = payload
+  return details
+}
+
 /**
  * Common RPC functionality shared between client and server
  */
@@ -18,51 +24,31 @@ export class RpcManager {
   /**
    * Normalize error for RPC response.
    * @param {*} err - Error to normalize
-   * @param {string} [rpcName] - RPC name that caused the error
-   * @param {*} [rpcPayload] - Original RPC payload
+   * @param {string} [rp] - RP name that caused the error
+   * @param {*} [payload] - Original RP payload
    * @returns {object} Normalized error object
    */
-  static normalizeError (err, rpcName, rpcPayload) {
-    // If already a WseError, add RPC context if not present
-    if (err.code && err.details) {
-      if (rpcName && !err.details.rpc) {
-        err.details.rpc = rpcName
-      }
-      if (rpcPayload !== undefined && !err.details.payload) {
-        err.details.payload = rpcPayload
-      }
+  static normalizeError (err, rp, payload) {
+    if (err && typeof err === 'object' && err.code && err.details) {
+      withCtx(err.details, rp, payload)
       return err
     }
-    
-    // If error is a plain object (custom error), preserve it directly
-    // while adding RPC context
+
     if (err && typeof err === 'object' && !err.message && !err.stack) {
-      const details = { ...err }
-      if (rpcName) details.rpc = rpcName
-      if (rpcPayload !== undefined) details.payload = rpcPayload
-      
-      return { 
-        code: WSE_ERROR.RP_EXECUTION_FAILED, 
+      return {
+        code: WSE_ERROR.RP_EXECUTION_FAILED,
         message: 'RPC execution failed',
-        details 
+        details: withCtx({ ...err }, rp, payload),
       }
     }
-    
-    // For Error objects, serialize them properly for network transport
-    const details = { 
-      origin: {
-        name: err.name,
-        message: err.message,
-        stack: err.stack
-      }
-    }
-    if (rpcName) details.rpc = rpcName
-    if (rpcPayload !== undefined) details.payload = rpcPayload
-    
-    return { 
-      code: WSE_ERROR.RP_EXECUTION_FAILED, 
-      message: err.message || 'Unexpected error', 
-      details 
+
+    const isObj = err && typeof err === 'object'
+    return {
+      code: WSE_ERROR.RP_EXECUTION_FAILED,
+      message: (isObj ? err.message : String(err)) || 'Unexpected error',
+      details: withCtx(isObj
+          ? { origin: { name: err.name, message: err.message, stack: err.stack } }
+          : { origin: { message: String(err) } }, rp, payload),
     }
   }
 
@@ -150,11 +136,12 @@ export class RpcManager {
 
       const handler = (result, isSuccess) => {
         cleanup()
-        if (isSuccess) {
-          resolve(result)
-        } else {
-          reject(fail(result.code, result.details, trace.stack))
-        }
+        if (isSuccess) return resolve(result)
+
+        // Never trust the peer's error frame. cleanup() already released the
+        // timeout and the disconnect guard, so throwing here would strand the
+        // caller on a promise nothing can settle anymore.
+        reject(fail(result?.code || WSE_ERROR.RP_EXECUTION_FAILED, result?.details, trace.stack))
       }
 
       this._callbacks.set(stamp, handler)
@@ -172,7 +159,19 @@ export class RpcManager {
         }, timeout * 1000)
       }
 
-      sendFn(protocol.pack({ type: rp, payload, stamp }))
+      // A synchronous failure here rejects the promise on its own, but without
+      // cleanup() the stamp, the disconnect bind and the timeout all leak — and
+      // with tO: 0 nothing ever sweeps them.
+      try {
+        sendFn(protocol.pack({ type: rp, payload, stamp }))
+      } catch (err) {
+        cleanup()
+        reject(fail(WSE_ERROR.RP_SEND_FAILED, {
+          rp,
+          payload,
+          origin: { name: err?.name, message: err?.message },
+        }, trace.stack))
+      }
     })
   }
 }
