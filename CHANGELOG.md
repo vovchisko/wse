@@ -1,6 +1,16 @@
 # Changelog
 
-## 5.0.0 — unreleased
+## 5.0.1 — unreleased
+
+### Fixed
+
+- The browser entry (`browser.js`) did not export `WSE_ERROR`, so browser code could
+  not compare `e.code` against a constant and had to hard-code the raw strings.
+  12 of the 18 codes are reachable from the client — either raised locally
+  (`RP_TIMEOUT`, `CONNECTION_CLOSED`, `NOT_AUTHORIZED`, `RP_SEND_FAILED`, …) or
+  received from the server (`RP_EXECUTION_FAILED`, `RP_NOT_REGISTERED`).
+
+## 5.0.0
 
 ### Breaking
 
