@@ -22,9 +22,10 @@
  * - client.identity: Does not exist - use conn.identity for original auth data
  */
 
-import { EventEmitter }               from 'tseep'
 import { WebSocket, WebSocketServer } from 'ws'
 import Signal                         from 'a-signal'
+
+import { EventEmitter } from './emitter.js'
 
 import { WseJSON }                                     from './protocol.js'
 import { make_stamp, WSE_ERROR, WSE_REASON, WseError } from './common.js'
@@ -73,6 +74,14 @@ export class WseConnection {
 
     /** @type {WseServer} Parent WSE server instance */
     Object.defineProperty(this, 'server', { enumerable: false, value: server })
+
+    // Per-connection callback map for server->client calls. Correlating responses
+    // globally by stamp lets any connection settle a call issued on another one;
+    // scoping the map to the connection binds a response to its own outgoing calls.
+    Object.defineProperty(this, '_rpcManager', { enumerable: false, value: new RpcManager() })
+
+    /** @type {*} Authentication-deadline timer handle, cleared once valid or closed */
+    Object.defineProperty(this, '_auth_timer', { enumerable: false, value: null, writable: true })
   }
 
   /**
@@ -176,7 +185,7 @@ export class WseConnection {
         },
       }
 
-      return this.server._rpcManager.call(
+      return this._rpcManager.call(
           this.server.protocol,
           rp,
           payload,
@@ -477,6 +486,15 @@ export class WseServer {
 
       this._handle_connection(conn, req)
 
+      // Reuse the RP timeout as an authentication deadline: a connection that never
+      // reaches CLIENT_VALID (silent stranger, or a hung identify()) is dropped
+      // instead of lingering half-open. tO of 0 disables it, matching RP semantics.
+      if (this.tO > 0) {
+        conn._auth_timer = setTimeout(() => {
+          if (conn.valid_stat !== CLIENT_VALID) conn.ws_conn.close(1000, WSE_REASON.AUTH_TIMEOUT)
+        }, this.tO * 1000)
+      }
+
       conn.ws_conn.on('message', message => {
         if (conn.valid_stat === CLIENT_VALIDATING) return
 
@@ -515,6 +533,7 @@ export class WseServer {
       })
 
       conn.ws_conn.on('close', (code, reason) => {
+        if (conn._auth_timer) clearTimeout(conn._auth_timer)
         if (conn.cid && this.clients.has(conn.cid)) {
           const client = this.clients.get(conn.cid)
           client._conn_drop(conn.conn_id, code, reason)
@@ -578,7 +597,7 @@ export class WseServer {
   _handle_valid_call (conn, type, payload, stamp) {
     // Responses never fall through — see the matching note in client._process_msg().
     if (type === this.protocol.internal_types.response || type === this.protocol.internal_types.response_error) {
-      this._rpcManager.handleResponse(stamp, payload, type === this.protocol.internal_types.response)
+      conn._rpcManager.handleResponse(stamp, payload, type === this.protocol.internal_types.response)
       return
     }
 
@@ -748,6 +767,11 @@ export class WseServer {
    * @private
    */
   _identify_connection (conn, cid, welcome_payload) {
+    if (conn._auth_timer) {
+      clearTimeout(conn._auth_timer)
+      conn._auth_timer = null
+    }
+
     if (!cid) return this._refuse_connection(conn)
 
     let wasNewIdentity = false
@@ -794,8 +818,9 @@ export class WseServer {
    * Drop client with specific ID.
    * @param {string} id client ID
    * @param {WSE_REASON|string|Buffer} [reason] WSE_REASON
+   * @param {number} [code] WebSocket close code that caused the leave
    */
-  dropClient (id, reason = WSE_REASON.NO_REASON) {
+  dropClient (id, reason = WSE_REASON.NO_REASON, code = 1000) {
     const client = this.clients.get(id)
 
     if (!client) return
@@ -807,7 +832,7 @@ export class WseServer {
 
     if (client.conns.size) client.drop(reason)
 
-    this.left.emit(client, 1000, String(reason))
+    this.left.emit(client, code, String(reason))
   }
 
   /**
@@ -896,7 +921,7 @@ export class WseIdentity {
     this.server.disconnected.emit(conn, code, String(reason))
 
     if (this.conns.size === 0) {
-      this.server.dropClient(this.cid, reason)
+      this.server.dropClient(this.cid, reason, code)
     }
   }
 

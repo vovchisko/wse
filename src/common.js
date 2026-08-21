@@ -2,6 +2,7 @@ export const WSE_REASON = Object.freeze({
   NO_REASON:           '',
   CLIENTS_CONCURRENCY: 'wse.clients-concurrency',
   NOT_AUTHORIZED:      'wse.not-authorized',
+  AUTH_TIMEOUT:        'wse.auth-timeout',
   PROTOCOL_ERR:        'wse.protocol-error',
   BY_CLIENT:           'wse.by-client',
   BY_SERVER:           'wse.by-server',

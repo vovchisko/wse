@@ -58,6 +58,10 @@ runner([
   { script: './tests/case-status-update-order.js' },
   { script: './tests/case-connect-reject-type.js' },
   { script: './tests/case-call-send-throw-leak.js' },
+  { script: './tests/case-cross-conn-response-spoof.js' },
+  { script: './tests/case-auth-timeout.js' },
+  { script: './tests/case-left-close-code.js' },
+  { script: './tests/case-jump-identity.js' },
 ])
   .then(res => {
     const failed = res

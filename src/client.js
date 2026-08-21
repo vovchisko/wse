@@ -3,13 +3,12 @@
  * @import { WseJSON } from './protocol.js'
  */
 
-// ee-safe: same API, no `new Function` codegen — browsers with a strict CSP
-// (script-src without 'unsafe-eval') kill the baked emitter on first emit.
-import { EventEmitter } from 'tseep/lib/ee-safe.js'
-import Signal           from 'a-signal'
+import Signal from 'a-signal'
 
 /** @type {typeof WebSocket} */
-import WS               from 'isomorphic-ws'
+import WS from 'isomorphic-ws'
+
+import { EventEmitter } from './emitter.js'
 
 import { WseJSON }                                     from './protocol.js'
 import { WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
@@ -102,6 +101,12 @@ export class WseClient {
     this.status = WSE_STATUS.IDLE
     this.challenge_solver = null
     this._ws = null
+
+    // Last identity/meta used to authenticate. Kept on the instance so a reconnect
+    // (re:true or jump's 4000 close) re-sends the credentials in effect now, not the
+    // ones captured by the original connect() closure.
+    this._identity = ''
+    this._meta = {}
   }
 
   _update_status (status) {
@@ -123,6 +128,9 @@ export class WseClient {
       throw err
     }
 
+    this._identity = identity
+    this._meta = meta
+
     this._update_status(WSE_STATUS.CONNECTING)
 
     let _resolve, _reject
@@ -132,7 +140,7 @@ export class WseClient {
     }
 
     const handleOpen = () => {
-      this.send(this.protocol.internal_types.hi, { identity, meta })
+      this.send(this.protocol.internal_types.hi, { identity: this._identity, meta: this._meta })
       this.connected.emit()
     }
 
@@ -368,7 +376,12 @@ export class WseClient {
    * // Jump with new authentication
    * await client.jump('ws://boss.game.com:4200', { token: 'boss-level-token' })
    */
-  jump (newUrl, identity = '', meta = {}) {
+  jump (newUrl, identity, meta) {
+    // Only override when supplied: a bare jump(url) keeps the current credentials,
+    // while jump(url, identity) re-authenticates with the new ones on the far end.
+    if (identity !== undefined) this._identity = identity
+    if (meta !== undefined) this._meta = meta
+
     if (this._ws) {
       this.url = newUrl
       this.ready.forget()
@@ -376,7 +389,7 @@ export class WseClient {
       return this.ready.wait()
     } else {
       this.url = newUrl
-      return this.connect(identity, meta)
+      return this.connect(this._identity, this._meta)
     }
   }
 
