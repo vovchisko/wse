@@ -1,6 +1,29 @@
 # Changelog
 
-## 5.0.1 — unreleased
+## 5.1.0
+
+### Changed
+
+- `engines.node` raised to `>=22.0.0`. Node 20 is out of support, and 22 is the oldest
+  release the test suite runs on (`node --test` only expands glob arguments from 22).
+
+### Fixed
+
+- A connection dropped for a protocol violation left its authentication timer pending
+  for the whole `tO` (20s by default). Both drop paths call `removeAllListeners()`
+  before `close()`, so the `close` handler that cleared the timer was already gone.
+  Harmless per connection — the callback re-checks `valid_stat` — but every rejected
+  stranger held a live timer, and the process could not exit while any of them ran.
+
+### Internal
+
+- Test suite rewritten under `node:test` in `spec/`, replacing `tests/` and the
+  `test-a-bit` dependency. Each server binds to port 0 and every server, client and
+  socket is torn down per test, so a leaked handle now shows up as a slow run instead
+  of being hidden by `process.exit()` — which is how the timer leak above surfaced.
+  Same behaviour covered, plus 19 tests for behaviour the old suite never exercised.
+
+## 5.0.1
 
 ### Fixed
 

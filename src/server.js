@@ -85,6 +85,20 @@ export class WseConnection {
   }
 
   /**
+   * Release the authentication deadline.
+   * Every path that stops caring about this connection has to call it: the drop paths
+   * wipe the socket's listeners before closing, so the `close` handler that would
+   * otherwise clear the timer is already gone and it stays pending for the whole tO.
+   * @private
+   */
+  _clear_auth_timer () {
+    if (this._auth_timer) {
+      clearTimeout(this._auth_timer)
+      this._auth_timer = null
+    }
+  }
+
+  /**
    * WebSocket ready state.
    * @returns {number} WebSocket ready state (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)
    */
@@ -526,6 +540,7 @@ export class WseServer {
           if (conn.cid && this.clients.has(conn.cid)) {
             this.clients.get(conn.cid)._conn_drop(conn.conn_id, 1000, WSE_REASON.PROTOCOL_ERR)
           } else {
+            conn._clear_auth_timer()
             conn.ws_conn.removeAllListeners()
             conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
           }
@@ -533,7 +548,7 @@ export class WseServer {
       })
 
       conn.ws_conn.on('close', (code, reason) => {
-        if (conn._auth_timer) clearTimeout(conn._auth_timer)
+        conn._clear_auth_timer()
         if (conn.cid && this.clients.has(conn.cid)) {
           const client = this.clients.get(conn.cid)
           client._conn_drop(conn.conn_id, code, reason)
@@ -767,10 +782,7 @@ export class WseServer {
    * @private
    */
   _identify_connection (conn, cid, welcome_payload) {
-    if (conn._auth_timer) {
-      clearTimeout(conn._auth_timer)
-      conn._auth_timer = null
-    }
+    conn._clear_auth_timer()
 
     if (!cid) return this._refuse_connection(conn)
 
@@ -910,6 +922,7 @@ export class WseIdentity {
 
     if (!conn) throw new WseError(WSE_ERROR.NO_CLIENT_CONNECTION, { id })
 
+    conn._clear_auth_timer()
     conn.ws_conn.removeAllListeners()
 
     if (conn.readyState === WebSocket.CONNECTING || conn.readyState === WebSocket.OPEN) {
