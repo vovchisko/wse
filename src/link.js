@@ -8,6 +8,7 @@ import Signal        from 'a-signal'
 
 import { GATE_OP, WSE_ERROR, WSE_REASON, WseError } from './common.js'
 import { RpcManager }                               from './rpc-man.js'
+import { write_frames }                             from './frames.js'
 
 const IN_SIZE = { [GATE_OP.JOIN]: 4, [GATE_OP.LEAVE]: 4, [GATE_OP.MSG]: 4, [GATE_OP.CALL]: 6, [GATE_OP.ACK]: 1 }
 
@@ -100,12 +101,12 @@ export class WseLink {
       try {
         pass = this.guard(conn, type, payload, stamp)
       } catch (err) {
-        if (stamp) conn.ws_conn.send(RpcManager.packError(this.server.protocol, err, stamp))
+        if (stamp) conn._send_packed(RpcManager.packError(this.server.protocol, err, stamp))
         else this.server.error.emit(err, conn)
         return
       }
       if (!pass) {
-        if (stamp) conn.ws_conn.send(RpcManager.packError(this.server.protocol, new WseError(WSE_ERROR.FORWARD_REFUSED), stamp))
+        if (stamp) conn._send_packed(RpcManager.packError(this.server.protocol, new WseError(WSE_ERROR.FORWARD_REFUSED), stamp))
         return
       }
     }
@@ -140,14 +141,14 @@ export class WseLink {
     try {
       this.port.postMessage({ ops: op })
     } catch (raw) {
-      const [ kind, cid ] = op
+      const cid = op[1]
       const client = this.server.clients.get(cid)
-      if (kind === GATE_OP.CALL) {
+      if (op[0] === GATE_OP.CALL) {
         const [ , , conn_id, rp, , stamp ] = op
         this._calls.delete(conn_id + stamp)
         const conn = client?.conns.get(conn_id)
         const err = new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw, cid, type: rp })
-        conn?.ws_conn.send(RpcManager.packError(this.server.protocol, err, stamp))
+        conn?._send_packed(RpcManager.packError(this.server.protocol, err, stamp))
         this.server.error.emit(err, conn)
       } else {
         this.server.error.emit(new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw, cid, type: op[2] }), client?.conns.values().next().value)
@@ -157,16 +158,33 @@ export class WseLink {
 
   _receive (msg) {
     if (!Array.isArray(msg?.ops)) return this.server.error.emit(new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { msg }))
-    const corked = new Map()
+    const queued = new Map()
     try {
-      this._run(msg, corked)
+      this._run(msg, queued)
     } finally {
-      for (const ws_conn of corked.keys()) ws_conn._socket?.uncork()
+      for (const [ ws_conn, { buffered, frames } ] of queued) this._flush_socket(ws_conn, buffered, frames, msg.buf)
       this._post(GATE_OP.ACK)
     }
   }
 
-  _run ({ buf, ops }, corked) {
+  /**
+   * @param {WebSocket} ws_conn
+   * @param {number} buffered - bufferedAmount before this batch reached the socket
+   * @param {Array<[Buffer, boolean]>} frames
+   * @param {ArrayBuffer} batch
+   */
+  _flush_socket (ws_conn, buffered, frames, batch) {
+    if (ws_conn.readyState !== WebSocket.OPEN) return
+    // ws has no public cork: one write per socket per batch instead of one per frame.
+    ws_conn._socket?.cork()
+    write_frames(frames, this.server.protocol, (frame, text) => {
+      // A queued frame keeps the whole batch buffer alive: a socket that is already backed up gets its own copy.
+      ws_conn.send(buffered && frame.buffer === batch ? new Uint8Array(frame) : frame, text ? TEXT : BINARY)
+    })
+    ws_conn._socket?.uncork()
+  }
+
+  _run ({ buf, ops }, queued) {
     const bytes = buf instanceof ArrayBuffer ? Buffer.from(buf) : null
     for (let i = 0; i < ops.length;) {
       if (!bytes && (ops[i] === GATE_OP.FRAME || ops[i] === GATE_OP.REPLY)) {
@@ -177,12 +195,12 @@ export class WseLink {
           const cid = ops[i + 1]
           const seat = ops[i + 2]
           const frame = bytes.subarray(ops[i + 3], ops[i + 3] + ops[i + 4])
-          const options = ops[i + 5] ? TEXT : BINARY
+          const text = ops[i + 5] === true
           i += 6
           if (cid === null) {
-            for (const each of this.admitted) this._send(each, frame, options, corked)
+            for (const each of this.admitted) this._send(each, frame, text, queued)
           } else if (this.cids.get(cid) === seat) {
-            this._send(cid, frame, options, corked)
+            this._send(cid, frame, text, queued)
           }
           break
         }
@@ -193,10 +211,10 @@ export class WseLink {
           const client = this.server.clients.get(cid)
           const conn = client?.conns.get(ops[i + 2])
           const frame = bytes.subarray(ops[i + 4], ops[i + 4] + ops[i + 5])
-          const options = ops[i + 6] ? TEXT : BINARY
+          const text = ops[i + 6] === true
           i += 7
           if (!awaited) this.server.error.emit(new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { op: GATE_OP.REPLY, cid }))
-          else if (conn) this._write(client, conn, frame, options, corked)
+          else if (conn) this._write(client, conn, frame, text, queued)
           break
         }
 
@@ -232,36 +250,34 @@ export class WseLink {
     }
   }
 
-  _send (cid, frame, options, corked) {
+  _send (cid, frame, text, queued) {
     const client = this.server.clients.get(cid)
     if (!client) return
-    for (const conn of client.conns.values()) this._write(client, conn, frame, options, corked)
+    for (const conn of client.conns.values()) this._write(client, conn, frame, text, queued)
   }
 
   /**
+   * Queue a frame for a socket; the batch writes each socket's queue once it is read through.
    * @param {WseIdentity} client
    * @param {WseConnection} conn
    * @param {Buffer} frame
-   * @param {object} options
-   * @param {Map<WebSocket, number>} corked - socket -> bufferedAmount before this batch wrote to it
+   * @param {boolean} text
+   * @param {Map<WebSocket, { buffered: number, frames: Array<[Buffer, boolean]> }>} queued
    */
-  _write (client, conn, frame, options, corked) {
+  _write (client, conn, frame, text, queued) {
     const ws_conn = conn.ws_conn
     if (ws_conn.readyState !== WebSocket.OPEN) return
-    let buffered = corked.get(ws_conn)
-    if (buffered === undefined) {
-      buffered = ws_conn.bufferedAmount
+    let entry = queued.get(ws_conn)
+    if (!entry) {
+      const buffered = ws_conn.bufferedAmount
       if (this.maxBuffered && buffered > this.maxBuffered) {
         client._conn_drop(conn.conn_id, 1000, WSE_REASON.SLOW_CLIENT)
         ws_conn.terminate()
         return
       }
-      corked.set(ws_conn, buffered)
-      // ws has no public cork: one write per socket per batch instead of one per frame.
-      ws_conn._socket?.cork()
+      queued.set(ws_conn, entry = { buffered, frames: [] })
     }
-    // A queued frame keeps the whole batch buffer alive: a socket that is already backed up gets its own copy.
-    ws_conn.send(buffered ? new Uint8Array(frame) : frame, options)
+    entry.frames.push([ frame, text ])
   }
 
   _unroute (cid) {
@@ -273,7 +289,7 @@ export class WseLink {
   _closed () {
     this.closed = true
     for (const [ cid, conn_id, stamp ] of this._calls.values()) {
-      this.server.clients.get(cid)?.conns.get(conn_id)?.ws_conn.send(RpcManager.packError(this.server.protocol, new WseError(WSE_ERROR.LINK_CLOSED), stamp))
+      this.server.clients.get(cid)?.conns.get(conn_id)?._send_packed(RpcManager.packError(this.server.protocol, new WseError(WSE_ERROR.LINK_CLOSED), stamp))
     }
     this._calls.clear()
     for (const cid of [ ...this.cids.keys() ]) {

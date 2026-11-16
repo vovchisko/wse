@@ -108,3 +108,27 @@ class MixedProtocol {
 ```
 
 `data.slice(1)` copies on purpose: a `Float32Array` view needs a byte offset that is a multiple of 4.
+
+## Joined Frames
+
+Many small messages to one socket can travel as one frame. wse decides when (see below); the protocol decides how,
+with an optional method:
+
+- `join(parts, text)` - `parts` are the bytes (`Uint8Array`) of frames `pack()` returned, in order, all text frames
+  (`text` is true) or all binary ones. It returns one frame: bytes, or a string for a text frame. Returning
+  `undefined` declines, and the parts go out one by one. A protocol without `join()` never joins.
+- `unpack()` of a joined frame returns the list of tuples, `[ [ type, payload, stamp ], ... ]`. wse tells the two
+  apart by the first element: a tuple starts with its `type`, a list starts with a tuple.
+
+`WseJSON` joins into a JSON array of the tuples: `[` + the parts separated by `,` + `]`. `JSON.parse` of that is
+already the list of tuples, so its `unpack()` did not change.
+
+When frames are joined:
+
+- **Gate:** always. Everything one gate batch writes to one socket goes out joined.
+- **Server:** between `server.cork()` and `server.uncork()`, for every socket.
+- **Client:** between `client.cork()` and `client.uncork()`.
+
+In each case a run of text frames and a run of binary frames are joined separately, so the order of messages holds.
+A joined frame unpacks into frames handled one by one, calls included. A stranger (not authenticated yet) that sends
+a joined frame is dropped with `PROTOCOL_ERR`.

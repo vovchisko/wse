@@ -246,7 +246,7 @@ test('guard: falsy drops a message and refuses a call, a throw answers with its 
   assert.deepEqual(thrown.details, { cid: 'U1', rp: 'throws' })
 })
 
-test('frames keep their kind: text stays text, binary stays binary', async t => {
+test('a text frame stays text and a binary frame stays binary', async t => {
   class MixedProtocol extends WseJSON {
     constructor () {
       super()
@@ -668,10 +668,9 @@ test('a frame to a socket that is already backed up is copied out of the batch',
   }
 
   gate.broadcast('a', 'x'.repeat(10))
-  gate.broadcast('b', 'y'.repeat(10))
 
-  await until(() => sent.length === 2, 'both frames')
-  for (const data of sent) assert.equal(data.buffer.byteLength, data.byteLength, 'the frame still pins the batch')
+  await until(() => sent.length === 1, 'the frame')
+  assert.equal(sent[0].buffer.byteLength, sent[0].byteLength, 'the frame still pins the batch')
 })
 
 test('frames survive a buffer that grows mid-turn, binary views with an offset included', async t => {

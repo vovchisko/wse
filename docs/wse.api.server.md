@@ -37,6 +37,20 @@ RPC timeout and auth deadline in milliseconds (number)
 
 ## Methods
 
+### server.cork() / server.uncork()
+
+Queue every frame sent to any socket (messages, broadcasts, RPC calls and answers) until `uncork()`; then each socket
+gets its queue in order, joined into as few frames as the protocol allows - see
+[Joined Frames](wse.protocol.md#joined-frames). Calls nest: the outermost `uncork()` writes. Dropping a connection
+writes its queue first.
+
+```javascript
+server.cork()
+for (const conn of players) conn.send('state', stateOf(conn))
+server.broadcast('tick', tick)
+server.uncork()
+```
+
 ### server.broadcast(type, payload)
 
 Send message to all connected users

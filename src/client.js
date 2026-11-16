@@ -13,6 +13,9 @@ import { EventEmitter } from './emitter.js'
 import { WseJSON }                                     from './protocol.js'
 import { check_tO, tO_armed, WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
 import { RpcManager }                                  from './rpc-man.js'
+import { frames_of, write_frames }                     from './frames.js'
+
+const decoder = new TextDecoder()
 
 export class WseClient {
   /**
@@ -109,6 +112,10 @@ export class WseClient {
     this._abort_connect = null
     this._wait = null
     this._closing = false
+    this._corks = 0
+
+    /** @type {Array<[*, boolean]>} frames queued while corked */
+    this._queue = []
 
     // Last identity/meta used to authenticate. Kept on the instance so a reconnect
     // (re:true or jump's 4000 close) re-sends the credentials in effect now, not the
@@ -170,9 +177,16 @@ export class WseClient {
     }
 
     const handlePreMessage = message => {
-      const frame = this._unpack(message.data)
-      if (!frame) return
-      const [ type, payload ] = frame
+      const frames = this._unpack(message.data)
+      if (!frames) return
+      for (const frame of frames) {
+        if (this.status === WSE_STATUS.READY) this._dispatch(frame)
+        else handlePreFrame(frame)
+        if (!this._ws) return
+      }
+    }
+
+    const handlePreFrame = ([ type, payload ]) => {
       if (type === this.protocol.internal_types.challenge) {
         if (typeof this.challenge_solver !== 'function') {
           const err = new WseError(WSE_ERROR.INVALID_CRA_HANDLER)
@@ -302,10 +316,19 @@ export class WseClient {
    * @private
    */
   _process_msg (message) {
-    const frame = this._unpack(message.data)
-    if (!frame) return
-    const [ type, payload, stamp ] = frame
+    const frames = this._unpack(message.data)
+    if (!frames) return
+    for (const frame of frames) {
+      if (!this._ws) return
+      this._dispatch(frame)
+    }
+  }
 
+  /**
+   * @param {Array} frame - [type, payload, stamp]
+   * @private
+   */
+  _dispatch ([ type, payload, stamp ]) {
     // Responses never fall through. An unmatched stamp (a reply that arrived after
     // its call timed out) must be dropped: answering it with response_error makes
     // the peer answer back, and the two sides trade frames forever.
@@ -319,7 +342,7 @@ export class WseClient {
       if (this._rpcManager.has(type)) {
         return this._handle_incoming_call(type, payload, stamp)
       } else {
-        this._ws.send(RpcManager.packError(this.protocol, new WseError(WSE_ERROR.RP_NOT_REGISTERED), stamp))
+        this._send_packed(RpcManager.packError(this.protocol, new WseError(WSE_ERROR.RP_NOT_REGISTERED), stamp))
         return
       }
     }
@@ -336,7 +359,7 @@ export class WseClient {
     // catch below, escaping as an unhandled rejection.
     const reply = frame => {
       if (!this._ws || this._ws.readyState !== WS.OPEN) return
-      this._ws.send(frame)
+      this._send_packed(frame)
     }
 
     const rp_wrap = async () => {
@@ -366,7 +389,7 @@ export class WseClient {
    */
   send (type, payload) {
     if (this._is_ready()) {
-      this._ws.send(this.protocol.pack({ type, payload }))
+      this._send_packed(this.protocol.pack({ type, payload }))
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
       Error.captureStackTrace?.(err, this.send)
@@ -382,6 +405,7 @@ export class WseClient {
    */
   close (reason = WSE_REASON.BY_CLIENT) {
     this._closing = true
+    this._flush()
     if (this._ws) return this._ws.close(1000, reason)
     if (!this._re_timer) return
     clearTimeout(this._re_timer)
@@ -399,15 +423,48 @@ export class WseClient {
   }
 
   /**
-   * Unpack a frame; a frame the protocol cannot read closes the connection with PROTOCOL_ERR.
-   * @returns {Array|null}
+   * Queue every frame sent to the server until uncork(), then send them in order, text (or binary) frames in a row
+   * joined into one frame where protocol.join() allows. Calls nest; the outermost uncork() sends.
+   */
+  cork () {
+    this._corks++
+  }
+
+  /**
+   * Undo one cork(); the last one sends everything queued.
+   */
+  uncork () {
+    if (!this._corks || --this._corks) return
+    this._flush()
+  }
+
+  _send_packed (packed) {
+    if (this._corks) return this._queue.push([ packed, typeof packed === 'string' ])
+    this._ws.send(packed)
+  }
+
+  _flush () {
+    const queue = this._queue
+    if (!queue.length) return
+    this._queue = []
+    if (this._ws?.readyState !== WS.OPEN) return
+    // A browser WebSocket sends bytes as a binary frame; a joined text frame goes back to a string.
+    write_frames(queue, this.protocol, (frame, text) => this._ws.send(text && typeof frame !== 'string' ? decoder.decode(frame) : frame))
+  }
+
+  /**
+   * Unpack a frame into the list of frames it carries; a frame the protocol cannot read closes the connection
+   * with PROTOCOL_ERR.
+   * @returns {Array<Array>|null}
    * @private
    */
   _unpack (data) {
     try {
-      const frame = this.protocol.unpack(data)
-      if (!Array.isArray(frame)) throw new TypeError('unpack() must return [ type, payload, stamp ]')
-      return frame
+      const unpacked = this.protocol.unpack(data)
+      if (!Array.isArray(unpacked)) throw new TypeError('unpack() must return [ type, payload, stamp ]')
+      const frames = frames_of(unpacked)
+      for (const frame of frames) if (!Array.isArray(frame)) throw new TypeError('a joined frame must unpack to [ type, payload, stamp ] tuples')
+      return frames
     } catch (err) {
       this.error.emit(new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }))
       this._ws?.close(1000, WSE_REASON.PROTOCOL_ERR)
@@ -477,7 +534,7 @@ export class WseClient {
    */
   async call (rp, payload) {
     if (this._is_ready()) {
-      return this._rpcManager.call(this.protocol, rp, payload, this.tO, data => this._ws.send(data), this.closed)
+      return this._rpcManager.call(this.protocol, rp, payload, this.tO, data => this._send_packed(data), this.closed)
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY, { rp })
       Error.captureStackTrace?.(err, this.call)

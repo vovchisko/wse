@@ -110,13 +110,13 @@ Returns a `WseLink`.
 ## What crosses the port
 
 - **Gate to main:** the gate puts every frame queued during one event-loop turn into one `ArrayBuffer`. It sends that
-  buffer as one transferred `postMessage`, together with the target of each frame and the frame kind (text or
-  binary). An `await` on a timer or `setImmediate` inside a tick ends the turn, so that tick is posted in two parts.
+  buffer as one transferred `postMessage`, together with the target of each frame and whether it is text or binary. An `await` on a timer or `setImmediate` inside a tick ends the turn, so that tick is posted in two parts.
   The main thread wraps the buffer without copying it. It writes each frame to the socket as it is, as a text frame
   or a binary frame, so the client's protocol gets a `string` or an `ArrayBuffer` exactly as if the server had sent
   it. Gate frames skip `perMessageDeflate`: deflating once per socket on the main thread is what the gate avoids.
-- **Writes:** the main thread corks each socket for the length of a batch, so all frames of one batch to one socket go
-  out in one write.
+- **Writes:** everything one batch has for one socket - broadcasts, sends and answers, in order - is joined into as
+  few frames as the protocol allows ([Joined Frames](wse.protocol.md#joined-frames)): with `WseJSON`, one frame per
+  socket per batch. The socket is corked while they are written, so they go out in one write either way.
 - **Backpressure:** the main thread acknowledges every batch it has written. The gate keeps at most two batches
   unacknowledged; while it waits, it keeps adding to the next one and posts it merged. A gate that produces faster
   than the main thread can write slows down and grows its own buffer - it does not flood the main thread's queue

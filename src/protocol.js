@@ -43,9 +43,29 @@ export class WseJSON {
   }
 
   /**
+   * Join packed frames, all text or all binary, into one frame: a JSON array of the tuples.
+   * @param {Uint8Array[]} parts - Bytes of frames pack() returned
+   * @returns {Uint8Array}
+   */
+  join (parts) {
+    let size = parts.length + 1
+    for (const part of parts) size += part.byteLength
+    const joined = new Uint8Array(size)
+    joined[0] = 0x5b
+    let at = 1
+    for (let i = 0; i < parts.length; i++) {
+      if (i) joined[at++] = 0x2c
+      joined.set(parts[i], at)
+      at += parts[i].byteLength
+    }
+    joined[at] = 0x5d
+    return joined
+  }
+
+  /**
    * Unpack message from JSON, sent as a text or a binary frame.
    * @param {string|ArrayBuffer} encoded - JSON to unpack
-   * @returns {[string, *, *]} Tuple of [type, payload, stamp]
+   * @returns {[string, *, *]|Array<[string, *, *]>} Tuple of [type, payload, stamp], or a list of them for a joined frame
    */
   unpack (encoded) {
     return JSON.parse(typeof encoded === 'string' ? encoded : decoder.decode(encoded))

@@ -31,6 +31,7 @@ import { WseJSON }                                     from './protocol.js'
 import { check_tO, make_stamp, tO_armed, WSE_ERROR, WSE_REASON, WseError } from './common.js'
 import { RpcManager }                                  from './rpc-man.js'
 import { WseLink }                                     from './link.js'
+import { frames_of, write_frames }                     from './frames.js'
 
 const CLIENT_STRANGER = 'CLIENT_STRANGER'
 const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
@@ -82,6 +83,9 @@ export class WseConnection {
     Object.defineProperty(this, '_rpcManager', { enumerable: false, value: new RpcManager() })
 
     Object.defineProperty(this, '_unlisten', { enumerable: false, value: () => {}, writable: true })
+
+    /** @type {Array<[*, boolean]>|null} Frames queued while the server is corked */
+    Object.defineProperty(this, '_queue', { enumerable: false, value: null, writable: true })
 
     /** @type {*} Authentication-deadline timer handle, cleared once valid or closed */
     Object.defineProperty(this, '_auth_timer', { enumerable: false, value: null, writable: true })
@@ -140,24 +144,43 @@ export class WseConnection {
    * })
    */
   send (type, payload) {
-    this.ws_conn.send(this.server.protocol.pack({ type, payload }))
+    this._send_packed(this.server.protocol.pack({ type, payload }))
   }
 
   /**
-   * Send an already-serialized frame to this connection.
+   * Send an already-serialized frame to this connection, or queue it while the server is corked.
    * Lets broadcast/multi-device sends serialize once and reuse the result.
    * @param {string|Buffer|ArrayBuffer} packed - Pre-packed message produced by protocol.pack()
    * @private
    */
   _send_packed (packed) {
-    this.ws_conn.send(packed)
+    if (!this.server._corks) return this.ws_conn.send(packed)
+    if (!this._queue) {
+      this._queue = []
+      this.server._corked.add(this)
+    }
+    this._queue.push([ packed, typeof packed === 'string' ])
   }
 
   /**
-   * Close this specific connection.
+   * Write what was queued while the server was corked, joined where the protocol can.
+   * @private
+   */
+  _flush () {
+    const queue = this._queue
+    if (!queue) return
+    this._queue = null
+    this.server._corked.delete(this)
+    if (this.ws_conn.readyState !== WebSocket.OPEN) return
+    write_frames(queue, this.server.protocol, (frame, text) => this.ws_conn.send(frame, { binary: !text }))
+  }
+
+  /**
+   * Close this specific connection. Anything queued by server.cork() goes out first.
    * @param {string|WSE_REASON} [reason] - Reason for closing connection
    */
   drop (reason = WSE_REASON.BY_SERVER) {
+    this._flush()
     this.ws_conn.close(1000, String(reason))
   }
 
@@ -198,7 +221,7 @@ export class WseConnection {
           rp,
           payload,
           this.server.tO || 0,
-          data => this.ws_conn.send(data),
+          data => this._send_packed(data),
           connectionDisconnectSignal,
       )
     } else {
@@ -407,6 +430,11 @@ export class WseServer {
     /** @type {Map<string, { link: WseLink, meta: * }>} cid -> the gate its unhandled frames go to */
     this._routes = new Map()
 
+    this._corks = 0
+
+    /** @type {Set<WseConnection>} connections with frames queued while corked */
+    this._corked = new Set()
+
     /**
      * Callback for handling when a new client (user) joins.
      * @callback JoinedCallback
@@ -512,28 +540,23 @@ export class WseServer {
       const onMessage = (message, isBinary) => {
         if (conn.valid_stat === CLIENT_VALIDATING) return
 
-        let type
-        let payload
-        let stamp
-
         try {
-          const frame = this.protocol.unpack(isBinary ? message : message.toString())
-          if (!Array.isArray(frame)) throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { frame })
-          ;[ type, payload, stamp ] = frame
+          const unpacked = this.protocol.unpack(isBinary ? message : message.toString())
+          if (!Array.isArray(unpacked)) throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { frame: unpacked })
+          const frames = frames_of(unpacked)
 
-          switch (conn.valid_stat) {
-            case CLIENT_VALID:
-              if (stamp) {
-                return this._handle_valid_call(conn, type, payload, stamp)
-              } else if (type) {
-                return this._handle_valid_message(conn, type, payload)
-              } else {
-                throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { type, payload, stamp })
-              }
+          if (conn.valid_stat !== CLIENT_VALID) {
+            if (frames === unpacked) throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { frame: unpacked })
+            return this._handle_stranger_message(conn, frames[0][0], frames[0][1])
+          }
 
-            case CLIENT_STRANGER:
-            case CLIENT_CHALLENGED:
-              return this._handle_stranger_message(conn, type, payload)
+          for (const frame of frames) {
+            if (conn.ws_conn.readyState !== WebSocket.OPEN) return
+            if (!Array.isArray(frame)) throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { frame })
+            const [ type, payload, stamp ] = frame
+            if (stamp) this._handle_valid_call(conn, type, payload, stamp)
+            else if (type) this._handle_valid_message(conn, type, payload)
+            else throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { type, payload, stamp })
           }
         } catch (err) {
           const error = err?.type !== 'wse-error' ? new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }) : err
@@ -635,7 +658,7 @@ export class WseServer {
       const route = this._routes.get(conn.cid)
       if (route) return route.link._forward(conn, type, payload, stamp)
 
-      conn.ws_conn.send(RpcManager.packError(this.protocol, new WseError(WSE_ERROR.RP_NOT_REGISTERED), stamp))
+      conn._send_packed(RpcManager.packError(this.protocol, new WseError(WSE_ERROR.RP_NOT_REGISTERED), stamp))
       return
     }
 
@@ -643,7 +666,7 @@ export class WseServer {
 
     const rp_wrap = async () => {
       const result = await procedure(conn, payload)
-      conn.ws_conn.send(
+      conn._send_packed(
           this.protocol.pack({
             type: this.protocol.internal_types.response,
             payload: result,
@@ -653,7 +676,7 @@ export class WseServer {
     }
 
     rp_wrap().catch(err => {
-      conn.ws_conn.send(RpcManager.packError(this.protocol, err, stamp))
+      conn._send_packed(RpcManager.packError(this.protocol, err, stamp))
 
       this.error.emit(
           new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
@@ -831,6 +854,23 @@ export class WseServer {
   }
 
   /**
+   * Queue every frame sent to a socket until uncork(): then each socket gets its queue in order, frames of one
+   * text (or binary) frames in a row joined into one frame where protocol.join() allows. Calls nest; the outermost
+   * uncork() writes.
+   */
+  cork () {
+    this._corks++
+  }
+
+  /**
+   * Undo one cork(); the last one writes everything queued.
+   */
+  uncork () {
+    if (!this._corks || --this._corks) return
+    for (const conn of [ ...this._corked ]) conn._flush()
+  }
+
+  /**
    * Send message for everyone
    * @param type
    * @param payload
@@ -986,6 +1026,7 @@ export class WseIdentity {
 
     conn._clear_auth_timer()
     conn._unlisten()
+    conn._flush()
 
     if (conn.readyState === WebSocket.CONNECTING || conn.readyState === WebSocket.OPEN) {
       conn.ws_conn.close(code, reason)

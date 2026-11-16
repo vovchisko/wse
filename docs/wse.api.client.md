@@ -71,6 +71,12 @@ Close connection
 
 Called while waiting to reconnect, it cancels the reconnect and rejects a pending `connect()` with `CONNECTION_CLOSED`.
 
+### client.cork() / client.uncork()
+
+Queue every frame sent to the server (messages, calls, answers) until `uncork()`, then send them in order, joined into
+as few frames as the protocol allows - see [Joined Frames](wse.protocol.md#joined-frames). Calls nest: the outermost
+`uncork()` sends. `close()` sends the queue first.
+
 ### client.send(type, payload)
 
 Send fire-and-forget message to server, see [Messaging docs](wse.messaging.md)

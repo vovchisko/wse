@@ -13,6 +13,11 @@
   in flight, so a gate faster than the main thread cannot starve it. A link `guard` runs
   before forwarding; an opt-in `maxBuffered` drops a socket that falls too far behind with
   `SLOW_CLIENT`. See [docs/wse.gate.md](docs/wse.gate.md).
+- Joined frames: many messages to one socket in one frame. A protocol opts in with
+  `join(parts, text)`, and its `unpack()` returns the list of tuples for a joined frame;
+  `WseJSON` does both (a JSON array of the tuples). A gate joins everything one batch has for
+  a socket; `server.cork()`/`uncork()` and `client.cork()`/`uncork()` join everything sent in
+  between. See [Joined Frames](docs/wse.protocol.md#joined-frames).
 
 ### Breaking
 
