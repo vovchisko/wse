@@ -137,7 +137,7 @@ test('a stranger whose first frame is not hi is dropped with PROTOCOL_ERR', asyn
 
 test('a connection that never authenticates is dropped after tO', async t => {
   const h = harness(t)
-  const { url } = await h.server({ tO: 0.5 })
+  const { url } = await h.server({ tO: 500 })
 
   // Opens the socket and then says nothing at all.
   const closed = socketClosed(h.socket(url))

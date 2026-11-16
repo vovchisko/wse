@@ -52,7 +52,7 @@ test('a client with re:true comes back after an abnormal close', async t => {
   const h = harness(t)
   const { server, url } = await h.server()
   const client = h.client(url, { re: true })
-  client.re_t0 = 10 // the retry delay is re_t0 plus up to a second of jitter
+  client.re_t0 = 10 // ms; the retry delay is re_t0 plus up to 1000ms of jitter
 
   await client.connect(SECRET, { user_id: 'U1' })
   assert.equal(client.reused, 1)
@@ -128,4 +128,75 @@ test('a client cannot reach a server that is not there', async t => {
   const err = await rejection(client.connect(SECRET))
 
   assert.equal(err.code, WSE_ERROR.WS_CLIENT_ERROR)
+})
+
+test('close() while the socket is still connecting stops a client with re:true', async t => {
+  const h = harness(t)
+  const { server, url } = await h.server()
+  const client = h.client(url, { re: true })
+  client.re_t0 = 50
+  const connected = []
+  server.when.connected(conn => connected.push(conn))
+
+  const settled = client.connect(SECRET).then(() => 'resolved', err => err.code)
+  client.close()
+
+  assert.equal(await Promise.race([ settled, wait(1500).then(() => 'hung') ]), WSE_ERROR.CONNECTION_CLOSED)
+  await wait(1300)
+  assert.equal(client.status, WSE_STATUS.OFFLINE)
+  assert.equal(connected.length, 0)
+})
+
+test('jump to a server that refuses rejects with NOT_AUTHORIZED', async t => {
+  const h = harness(t)
+  const { url } = await h.server()
+  const { url: refusing } = await h.server({ identify: ({ refuse }) => refuse() })
+  const client = h.client(url)
+  await client.connect(SECRET)
+
+  const settled = client.jump(refusing).then(() => 'resolved', err => err.code)
+
+  assert.equal(await Promise.race([ settled, wait(1500).then(() => 'hung') ]), WSE_ERROR.NOT_AUTHORIZED)
+})
+
+test('jump to a port nobody listens on rejects', async t => {
+  const h = harness(t)
+  const { url } = await h.server()
+  const client = h.client(url)
+  client.when.error(() => {})
+  await client.connect(SECRET)
+
+  const settled = client.jump('ws://localhost:1').then(() => 'resolved', err => err.code)
+
+  assert.equal(await Promise.race([ settled, wait(3000).then(() => 'hung') ]), WSE_ERROR.WS_CLIENT_ERROR)
+})
+
+test('a malformed url rejects connect and jump instead of throwing from a timer', async t => {
+  const h = harness(t)
+  const { url } = await h.server()
+  const client = h.client(url)
+  client.when.error(() => {})
+  await client.connect(SECRET)
+
+  assert.equal((await rejection(client.jump('not a url'))).code, WSE_ERROR.WS_CLIENT_ERROR)
+  assert.equal(client.status, WSE_STATUS.OFFLINE)
+
+  const fresh = h.client('not a url')
+  fresh.when.error(() => {})
+  assert.equal((await rejection(fresh.connect(SECRET))).code, WSE_ERROR.WS_CLIENT_ERROR)
+  assert.equal(fresh.status, WSE_STATUS.OFFLINE)
+})
+
+test('connect() from a closed handler reconnects', async t => {
+  const h = harness(t)
+  const { server, url } = await h.server()
+  const client = h.client(url)
+  await client.connect(SECRET, { user_id: 'U1' })
+
+  const statuses = collectSignal(client.updated)
+  const again = new Promise(resolve => client.closed.once(() => resolve(client.connect(SECRET, { user_id: 'U1' }))))
+  server.dropClient('U1')
+
+  assert.deepEqual(await again, { hey: 'welcome-payload' })
+  assert.deepEqual(statuses.map(([ status ]) => status).slice(-3), [ WSE_STATUS.OFFLINE, WSE_STATUS.CONNECTING, WSE_STATUS.READY ])
 })

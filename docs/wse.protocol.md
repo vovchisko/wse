@@ -55,32 +55,56 @@ Your custom protocol must:
 3. **Use [type, payload, stamp] format**: This is the expected message structure
 4. **Handle encoding/decoding**: Convert between your format and the standard tuple
 
-## Advanced Example
+## Binary Protocol
+
+`pack()` may return a string (text frame) or a `Uint8Array`/`ArrayBuffer` (binary frame). `unpack()` receives the
+same on both sides, in Node and in the browser:
+
+| frame  | `unpack()` gets |
+|--------|-----------------|
+| text   | `string`        |
+| binary | `ArrayBuffer`   |
+
+The frame layout is up to the protocol. `hi`, `challenge`, `welcome`, RPC calls and responses carry arbitrary
+payloads, so keep a generic branch for them. A frame with a `stamp` is a call or a response: a compact layout that
+drops the stamp only fits plain messages.
+
+The contract `WseServer` and `WseClient` rely on:
+
+- `unpack()` returns an array `[ type, payload, stamp ]`; anything else, or a throw, closes the connection with
+  `PROTOCOL_ERR` and emits `MESSAGE_PROCESSING_ERROR`.
+- `stamp` round-trips as given; a truthy `stamp` marks a call or a response.
+- `hi` carries `{ identity, meta }`; an error response carries a plain `{ code, details }`.
+- RPC responses are typed `internal_types.response` / `response_error`, not by the procedure name.
 
 ```javascript
-class BinaryProtocol {
+class MixedProtocol {
   constructor () {
-    this.name = 'binary-protocol'
+    this.name = 'my-mixed-v1'
     this.internal_types = Object.freeze({
-      hi: 0x01,
-      challenge: 0x02,
-      welcome: 0x03,
-      call: 0x04,
-      response: 0x05,
-      response_error: 0x06,
+      hi: '~wse:hi',
+      challenge: '~wse:challenge',
+      welcome: '~wse:welcome',
+      call: '~wse:call',
+      response: '~wse:response',
+      response_error: '~wse:response-err',
     })
   }
 
+  // 'pos' messages: binary [1][Float32Array bytes]; everything else, calls included: JSON text
   pack ({ type, payload, stamp }) {
-    const data = { type, payload, stamp }
-    const json = JSON.stringify(data)
-    return Buffer.from(json, 'utf8')
+    if (type !== 'pos' || stamp) return JSON.stringify([ type, payload, stamp ])
+    const frame = new Uint8Array(1 + payload.byteLength)
+    frame[0] = 1
+    frame.set(new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength), 1)
+    return frame
   }
 
-  unpack (buffer) {
-    const json = buffer.toString('utf8')
-    const { type, payload, stamp } = JSON.parse(json)
-    return [ type, payload, stamp ]
+  unpack (data) {
+    if (typeof data === 'string') return JSON.parse(data)
+    return [ 'pos', new Float32Array(data.slice(1)) ]
   }
 }
-``` 
+```
+
+`data.slice(1)` copies on purpose: a `Float32Array` view needs a byte offset that is a multiple of 4.

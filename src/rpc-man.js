@@ -1,4 +1,4 @@
-import { make_stamp, WSE_ERROR, WseError } from './common.js'
+import { make_stamp, tO_armed, WSE_ERROR, WseError } from './common.js'
 
 const fail = (code, details, traceStack) => {
   const e = new WseError(code, details)
@@ -6,10 +6,17 @@ const fail = (code, details, traceStack) => {
   return e
 }
 
-const withCtx = (details, rp, payload) => {
-  if (rp && !details.rp) details.rp = rp
-  if (payload !== undefined && !details.payload) details.payload = payload
-  return details
+const isPlain = v => {
+  if (v === null || typeof v !== 'object') return false
+  const proto = Object.getPrototypeOf(v)
+  return proto === Object.prototype || proto === null
+}
+
+const withRp = (details, rp) => {
+  if (details === undefined || details === null) return { rp }
+  if (!isPlain(details)) return { value: details, rp }
+  if (details.rp === undefined || details.rp === rp) return { ...details, rp }
+  return { ...details, rp, peer_rp: details.rp }
 }
 
 /**
@@ -24,31 +31,30 @@ export class RpcManager {
   /**
    * Normalize error for RPC response.
    * @param {*} err - Error to normalize
-   * @param {string} [rp] - RP name that caused the error
-   * @param {*} [payload] - Original RP payload
    * @returns {object} Normalized error object
    */
-  static normalizeError (err, rp, payload) {
-    if (err && typeof err === 'object' && err.code && err.details) {
-      withCtx(err.details, rp, payload)
-      return err
-    }
+  static normalizeError (err) {
+    if (!err || typeof err !== 'object') return { code: WSE_ERROR.RP_EXECUTION_FAILED, details: { origin: { message: String(err) } } }
+    if (err.code && err.details) return { code: err.code, details: err.details }
+    if (!err.message && !err.stack) return { code: WSE_ERROR.RP_EXECUTION_FAILED, details: { ...err } }
+    return { code: WSE_ERROR.RP_EXECUTION_FAILED, details: { origin: { name: err.name, message: err.message } } }
+  }
 
-    if (err && typeof err === 'object' && !err.message && !err.stack) {
-      return {
-        code: WSE_ERROR.RP_EXECUTION_FAILED,
-        message: 'RPC execution failed',
-        details: withCtx({ ...err }, rp, payload),
-      }
-    }
-
-    const isObj = err && typeof err === 'object'
-    return {
-      code: WSE_ERROR.RP_EXECUTION_FAILED,
-      message: (isObj ? err.message : String(err)) || 'Unexpected error',
-      details: withCtx(isObj
-          ? { origin: { name: err.name, message: err.message, stack: err.stack } }
-          : { origin: { message: String(err) } }, rp, payload),
+  /**
+   * Pack the error frame answering a failed call. Falls back to the bare code when the
+   * protocol cannot pack the details.
+   * @param {object} protocol
+   * @param {*} err
+   * @param {string} stamp
+   */
+  static packError (protocol, err, stamp) {
+    const type = protocol.internal_types.response_error
+    const payload = RpcManager.normalizeError(err)
+    try {
+      return protocol.pack({ type, payload, stamp })
+    } catch (pack_err) {
+      const code = typeof payload.code === 'string' ? payload.code : WSE_ERROR.RP_EXECUTION_FAILED
+      return protocol.pack({ type, payload: { code, details: { origin: { name: pack_err?.name, message: pack_err?.message } } }, stamp })
     }
   }
 
@@ -111,7 +117,7 @@ export class RpcManager {
    * @param {object} protocol - Protocol instance
    * @param {string} rp - RPC name
    * @param {*} payload - RPC payload
-   * @param {number} timeout - Timeout in seconds
+   * @param {number} timeout - Timeout in milliseconds, 0 disables it
    * @param {Function} sendFn - Function to send message
    * @param {object} disconnectSignal - Signal for disconnect events
    * @returns {Promise<*>} RPC result promise
@@ -141,22 +147,22 @@ export class RpcManager {
         // Never trust the peer's error frame. cleanup() already released the
         // timeout and the disconnect guard, so throwing here would strand the
         // caller on a promise nothing can settle anymore.
-        reject(fail(result?.code || WSE_ERROR.RP_EXECUTION_FAILED, result?.details, trace.stack))
+        const code = typeof result?.code === 'string' && result.code ? result.code : WSE_ERROR.RP_EXECUTION_FAILED
+        reject(fail(code, withRp(result?.details, rp), trace.stack))
       }
 
       this._callbacks.set(stamp, handler)
 
-      // Handle disconnect - necessary for proper error reporting
-      disconnectBind = disconnectSignal.once((...args) => {
+      disconnectBind = disconnectSignal.on((...args) => {
         cleanup()
-        reject(fail(WSE_ERROR.RP_DISCONNECT, { disconnected: args }, trace.stack))
+        reject(fail(WSE_ERROR.RP_DISCONNECT, { rp, disconnected: args }, trace.stack))
       })
 
-      if (timeout > 0) {
+      if (tO_armed(timeout)) {
         timeoutHandle = setTimeout(() => {
           cleanup()
-          reject(fail(WSE_ERROR.RP_TIMEOUT, undefined, trace.stack))
-        }, timeout * 1000)
+          reject(fail(WSE_ERROR.RP_TIMEOUT, { rp }, trace.stack))
+        }, timeout)
       }
 
       // A synchronous failure here rejects the promise on its own, but without
@@ -168,7 +174,6 @@ export class RpcManager {
         cleanup()
         reject(fail(WSE_ERROR.RP_SEND_FAILED, {
           rp,
-          payload,
           origin: { name: err?.name, message: err?.message },
         }, trace.stack))
       }

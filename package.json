@@ -42,7 +42,7 @@
   },
   "homepage": "https://github.com/vovchisko/wse#readme",
   "dependencies": {
-    "a-signal": "^2.3.0",
+    "a-signal": "^3.0.0",
     "isomorphic-ws": "^5.0.0",
     "ws": "^8.21.3"
   },

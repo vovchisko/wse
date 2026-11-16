@@ -1,7 +1,7 @@
 import { once as eventOnce } from 'node:events'
 import { createServer }      from 'node:http'
 
-import { WebSocket } from 'ws'
+import { WebSocket, WebSocketServer } from 'ws'
 
 import { WseServer } from '../src/server.js'
 import { WseClient } from '../src/client.js'
@@ -96,6 +96,7 @@ export function harness (t) {
   const clients = []
   const sockets = []
   const https = []
+  const raws = []
 
   t.after(async () => {
     for (const client of clients) {
@@ -111,6 +112,12 @@ export function harness (t) {
         try { ws_conn.terminate() } catch {}
       }
       await new Promise(resolve => server.ws.close(resolve))
+    }
+    for (const wss of raws) {
+      for (const ws_conn of wss.clients) {
+        try { ws_conn.terminate() } catch {}
+      }
+      await new Promise(resolve => wss.close(resolve))
     }
     for (const http of https) {
       http.closeAllConnections()
@@ -149,6 +156,14 @@ export function harness (t) {
     /** Tracked WseClient. */
     client (url, options = {}) {
       return track(clients, new WseClient({ url, ...options }))
+    },
+
+    /** Bare ws server speaking the wse subprotocol - a scripted peer for the client. Returns its url. */
+    async raw (on_connection, protocol = PROTOCOL_NAME) {
+      const wss = track(raws, new WebSocketServer({ port: 0, handleProtocols: () => protocol }))
+      wss.on('connection', on_connection)
+      await eventOnce(wss, 'listening')
+      return `ws://localhost:${ wss.address().port }`
     },
 
     /** Bare ws socket speaking the wse subprotocol - for protocol-level probing. */

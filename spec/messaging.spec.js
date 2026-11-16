@@ -215,3 +215,17 @@ function pingPong (server, client, limit) {
     return done
   })
 }
+
+test('a channel handler that throws null is reported, not a crash', async t => {
+  const h = harness(t)
+  const { server, url } = await h.server()
+  server.channel.on('boom', () => { throw null })
+  const errors = collectSignal(server.error)
+  const client = h.client(url)
+  await client.connect(SECRET)
+
+  client.send('boom')
+
+  await until(() => errors.length, 'the error')
+  assert.equal(errors[0][0].code, WSE_ERROR.MESSAGE_PROCESSING_ERROR)
+})

@@ -8,7 +8,8 @@ Client class for connecting to WSE servers with automatic reconnection.
 
 - `options.url` - WebSocket endpoint (string, required)
 - `options.re` - Enable auto-reconnection (boolean, default: false)
-- `options.tO` - RPC timeout in seconds (number, default: 20)
+- `options.tO` - RPC timeout and welcome deadline in milliseconds, 0 disables both (number, default: 20000).
+  `Infinity` and anything above 2^31-1 disable it too; a negative, `NaN` or non-number value throws `INVALID_TIMEOUT`
 - `options.protocol` - Message protocol (object, default: WseJSON)
 
 ## Properties
@@ -25,6 +26,14 @@ Current connection status ([WSE_STATUS](./wse.api.constants.md))
 
 Current WebSocket endpoint URL (string)
 
+### client.re_t0
+
+Base reconnect delay in milliseconds, plus up to 1000ms of random jitter (number, default: 1000)
+
+### client.re_on_codes
+
+WebSocket close codes that trigger a reconnect when `re` is enabled (number[], default: 1005, 1006, 1011, 1012, 1013, 1014, 4000)
+
 ## Methods
 
 ### client.connect(identity, meta)
@@ -40,9 +49,15 @@ Resolves with the server's welcome payload. Rejects with a
 code and reason in `error.details`. With `re: true` the promise still rejects on a
 close that will not be retried; retried closes keep it pending until the client is ready.
 
+- No welcome within `tO` of the socket opening closes it with `AUTH_TIMEOUT`.
+- A challenge with no [solver](wse.auth.cra.md) set rejects with `INVALID_CRA_HANDLER`.
+- A frame the protocol cannot unpack emits `MESSAGE_PROCESSING_ERROR` on `client.when.error` and closes the
+  connection with `PROTOCOL_ERR`.
+
 ### client.jump(newUrl, identity, meta)
 
-Switch to different server endpoint (Promise). Closes current connection with code 4000.
+Switch to different server endpoint (Promise). Closes current connection with code 4000. Settles like `connect()`:
+resolves with the new server's welcome payload, rejects when the new server refuses or cannot be reached.
 
 - `newUrl` - New WebSocket endpoint (string)
 - `identity` - Authentication data (any, optional)
@@ -54,6 +69,8 @@ Close connection
 
 - `reason` - Close reason ([WSE_REASON](wse.api.constants.md), optional, default: BY_CLIENT)
 
+Called while waiting to reconnect, it cancels the reconnect and rejects a pending `connect()` with `CONNECTION_CLOSED`.
+
 ### client.send(type, payload)
 
 Send fire-and-forget message to server, see [Messaging docs](wse.messaging.md)
@@ -61,12 +78,16 @@ Send fire-and-forget message to server, see [Messaging docs](wse.messaging.md)
 - `type` - Message type (string)
 - `payload` - Message data (any)
 
+Throws `CONNECTION_NOT_READY` unless the client is `READY` (welcomed), including from `when.connected`.
+
 ### client.call(rp, payload)
 
 Call server RPC and wait for response (Promise), see [RPC docs](wse.rpc.md)
 
 - `rp` - RPC name (string)
 - `payload` - RPC data (any)
+
+Rejects with `CONNECTION_NOT_READY` unless the client is `READY` (welcomed).
 
 ### client.register(rp, handler)
 

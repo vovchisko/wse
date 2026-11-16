@@ -1,6 +1,8 @@
 /**
  * Default JSON protocol implementation for WSE.
  */
+const decoder = new TextDecoder()
+
 export class WseJSON {
   constructor () {
     /**
@@ -41,11 +43,11 @@ export class WseJSON {
   }
 
   /**
-   * Unpack message from JSON string.
-   * @param {string} encoded - JSON string to unpack
+   * Unpack message from JSON, sent as a text or a binary frame.
+   * @param {string|ArrayBuffer} encoded - JSON to unpack
    * @returns {[string, *, *]} Tuple of [type, payload, stamp]
    */
   unpack (encoded) {
-    return JSON.parse(encoded)
+    return JSON.parse(typeof encoded === 'string' ? encoded : decoder.decode(encoded))
   }
 }

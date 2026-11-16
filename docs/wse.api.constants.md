@@ -2,6 +2,11 @@
 
 ## WSE_ERROR
 
+Both sides:
+
+- `MESSAGE_PROCESSING_ERROR` - Incoming frame could not be unpacked
+- `INVALID_TIMEOUT` - `tO` is negative, `NaN` or not a number
+
 Client:
 
 - `CLIENT_ALREADY_CONNECTED` - Client is already connected
@@ -24,7 +29,12 @@ Server:
 - `NO_CLIENT_CONNECTION` - Client connection not found
 - `PROTOCOL_VIOLATION` - Protocol violation
 - `CONNECTION_ERROR` - Connection-level error
-- `MESSAGE_PROCESSING_ERROR` - Incoming message could not be processed
+- `FORWARD_REFUSED` - A link guard refused to forward a call
+- `LINK_CLOSED` - `server.forward()` to a link whose port closed, or a gate call still in flight when it closed
+
+Gate:
+
+- `NOT_JOINED` - A call reached the gate before it admitted the client
 
 ## WSE_REASON
 
@@ -33,6 +43,8 @@ Server:
 - `NOT_AUTHORIZED` - Authentication failed
 - `PROTOCOL_ERR` - Protocol error
 - `CLIENTS_CONCURRENCY` - Too many connections
+- `SLOW_CLIENT` - Socket buffered past the link's `maxBuffered` (off unless set)
+- `GATE_CLOSED` - The gate's port closed
 - `NO_REASON` - No specific reason
 
 ## WSE_STATUS

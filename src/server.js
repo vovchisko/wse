@@ -28,8 +28,9 @@ import Signal                         from 'a-signal'
 import { EventEmitter } from './emitter.js'
 
 import { WseJSON }                                     from './protocol.js'
-import { make_stamp, WSE_ERROR, WSE_REASON, WseError } from './common.js'
+import { check_tO, make_stamp, tO_armed, WSE_ERROR, WSE_REASON, WseError } from './common.js'
 import { RpcManager }                                  from './rpc-man.js'
+import { WseLink }                                     from './link.js'
 
 const CLIENT_STRANGER = 'CLIENT_STRANGER'
 const CLIENT_VALIDATING = 'CLIENT_VALIDATING'
@@ -79,6 +80,8 @@ export class WseConnection {
     // globally by stamp lets any connection settle a call issued on another one;
     // scoping the map to the connection binds a response to its own outgoing calls.
     Object.defineProperty(this, '_rpcManager', { enumerable: false, value: new RpcManager() })
+
+    Object.defineProperty(this, '_unlisten', { enumerable: false, value: () => {}, writable: true })
 
     /** @type {*} Authentication-deadline timer handle, cleared once valid or closed */
     Object.defineProperty(this, '_auth_timer', { enumerable: false, value: null, writable: true })
@@ -183,20 +186,11 @@ export class WseConnection {
    * }
    */
   async call (rp, payload) {
-    if (this.ws_conn && this.ws_conn.readyState === 1) {
-      // Create a signal that filters disconnect events for this specific connection.
-      // Subscribes with on(), not once(): a-signal drops a `once` bind after the
-      // first emission whatever the callback does, so any other client's disconnect
-      // would silently disarm this guard and leave the call hanging until tO.
+    if (this.valid_stat === CLIENT_VALID && this.ws_conn.readyState === WebSocket.OPEN) {
       const connectionDisconnectSignal = {
-        once: callback => {
-          const bind = this.server.disconnected.on((conn, code, reason) => {
-            if (conn !== this) return
-            bind.off()
-            callback(code, reason)
-          })
-          return bind
-        },
+        on: callback => this.server.disconnected.on((conn, code, reason) => {
+          if (conn === this) callback(code, reason)
+        }),
       }
 
       return this._rpcManager.call(
@@ -208,7 +202,7 @@ export class WseConnection {
           connectionDisconnectSignal,
       )
     } else {
-      const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
+      const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY, { rp })
       this.server.error.emit(err, this)
       throw err
     }
@@ -325,6 +319,7 @@ export class WseServer {
    *
    * @param {Function|WseServer.identifyCallback} options.identify Will be called for each new connection.
    * @param {number}    [options.connPerUser=1] How many connections allowed per user
+   * @param {number}    [options.tO=20000] RP call timeout in milliseconds, also the auth deadline for new connections. 0 disables both.
    * @param {object}    [options.protocol=WseJSON] Overrides `wse_protocol` implementation. Use with caution.
    *
    * @example
@@ -387,7 +382,7 @@ export class WseServer {
    * @param {Boolean}   [options.skipUTF8Validation=false] Specifies whether or not to skip UTF-8 validation for text and close messages
    * @param {Function}  [options.verifyClient] A hook to reject connections
    */
-  constructor ({ protocol = undefined, identify, connPerUser = 1, tO = 20, ...options }) {
+  constructor ({ protocol = undefined, identify, connPerUser = 1, tO = 20000, ...options }) {
     if (!identify) throw new WseError(WSE_ERROR.IDENTIFY_HANDLER_MISSING)
 
     /** @type {Map<string, WseIdentity>} Map of authenticated users (cid -> client) */
@@ -395,7 +390,7 @@ export class WseServer {
     this.protocol = protocol || new WseJSON()
     this.identify = identify
     this.connPerUser = connPerUser
-    this.tO = tO
+    this.tO = check_tO(tO)
 
     this.ws = null
     this.channel = new EventEmitter()
@@ -408,6 +403,9 @@ export class WseServer {
     this.error = new Signal()
 
     this._rpcManager = new RpcManager()
+
+    /** @type {Map<string, { link: WseLink, meta: * }>} cid -> the gate its unhandled frames go to */
+    this._routes = new Map()
 
     /**
      * Callback for handling when a new client (user) joins.
@@ -503,13 +501,15 @@ export class WseServer {
       // Reuse the RP timeout as an authentication deadline: a connection that never
       // reaches CLIENT_VALID (silent stranger, or a hung identify()) is dropped
       // instead of lingering half-open. tO of 0 disables it, matching RP semantics.
-      if (this.tO > 0) {
+      if (tO_armed(this.tO)) {
         conn._auth_timer = setTimeout(() => {
           if (conn.valid_stat !== CLIENT_VALID) conn.ws_conn.close(1000, WSE_REASON.AUTH_TIMEOUT)
-        }, this.tO * 1000)
+        }, this.tO)
       }
 
-      conn.ws_conn.on('message', message => {
+      conn.ws_conn.binaryType = 'arraybuffer'
+
+      const onMessage = (message, isBinary) => {
         if (conn.valid_stat === CLIENT_VALIDATING) return
 
         let type
@@ -517,7 +517,9 @@ export class WseServer {
         let stamp
 
         try {
-          ;[ type, payload, stamp ] = this.protocol.unpack(message)
+          const frame = this.protocol.unpack(isBinary ? message : message.toString())
+          if (!Array.isArray(frame)) throw new WseError(WSE_ERROR.PROTOCOL_VIOLATION, { frame })
+          ;[ type, payload, stamp ] = frame
 
           switch (conn.valid_stat) {
             case CLIENT_VALID:
@@ -534,20 +536,20 @@ export class WseServer {
               return this._handle_stranger_message(conn, type, payload)
           }
         } catch (err) {
-          const error = err.type !== 'wse-error' ? new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }) : err
+          const error = err?.type !== 'wse-error' ? new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }) : err
           error.message_from = conn.cid ? `${ conn.cid }#${ conn.conn_id }` : 'stranger'
           this.error.emit(error, conn)
           if (conn.cid && this.clients.has(conn.cid)) {
             this.clients.get(conn.cid)._conn_drop(conn.conn_id, 1000, WSE_REASON.PROTOCOL_ERR)
           } else {
             conn._clear_auth_timer()
-            conn.ws_conn.removeAllListeners()
+            conn._unlisten()
             conn.ws_conn.close(1000, WSE_REASON.PROTOCOL_ERR)
           }
         }
-      })
+      }
 
-      conn.ws_conn.on('close', (code, reason) => {
+      const onClose = (code, reason) => {
         conn._clear_auth_timer()
         if (conn.cid && this.clients.has(conn.cid)) {
           const client = this.clients.get(conn.cid)
@@ -555,9 +557,19 @@ export class WseServer {
         } else {
           this.disconnected.emit(conn, code, String(reason))
         }
-      })
+      }
 
-      conn.ws_conn.onerror = e => this.error.emit(new WseError(WSE_ERROR.CONNECTION_ERROR, { raw: e }), conn)
+      const onError = e => this.error.emit(new WseError(WSE_ERROR.CONNECTION_ERROR, { raw: e }), conn)
+
+      conn.ws_conn.on('message', onMessage)
+      conn.ws_conn.on('close', onClose)
+      conn.ws_conn.onerror = onError
+
+      // Not removeAllListeners(): ws keeps a 'close' listener that takes the socket out of wss.clients.
+      conn._unlisten = () => {
+        conn.ws_conn.off('message', onMessage)
+        conn.ws_conn.off('close', onClose)
+      }
     })
   }
 
@@ -598,7 +610,10 @@ export class WseServer {
    * @private
    */
   _handle_valid_message (conn, type, payload) {
-    this.channel.emit(type, conn, payload) || this.ignored.emit(conn, type, payload)
+    if (this.channel.emit(type, conn, payload)) return
+    const route = this._routes.get(conn.cid)
+    if (route) route.link._forward(conn, type, payload)
+    else this.ignored.emit(conn, type, payload)
   }
 
   /**
@@ -616,16 +631,11 @@ export class WseServer {
       return
     }
 
-    // Handle incoming RPC calls
     if (!this._rpcManager.has(type)) {
-      conn.ws_conn.send(
-          this.protocol.pack({
-            type: this.protocol.internal_types.response_error,
-            payload: RpcManager.normalizeError(new WseError(WSE_ERROR.RP_NOT_REGISTERED), type),
-            stamp: stamp,
-          }),
-      )
+      const route = this._routes.get(conn.cid)
+      if (route) return route.link._forward(conn, type, payload, stamp)
 
+      conn.ws_conn.send(RpcManager.packError(this.protocol, new WseError(WSE_ERROR.RP_NOT_REGISTERED), stamp))
       return
     }
 
@@ -643,19 +653,11 @@ export class WseServer {
     }
 
     rp_wrap().catch(err => {
-      const errorPayload = RpcManager.normalizeError(err, type, payload)
-
-      conn.ws_conn.send(
-          this.protocol.pack({
-            type: this.protocol.internal_types.response_error,
-            payload: errorPayload,
-            stamp: stamp,
-          }),
-      )
+      conn.ws_conn.send(RpcManager.packError(this.protocol, err, stamp))
 
       this.error.emit(
           new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
-            type,
+            rp: type,
             payload,
             stamp,
             cid: conn.cid,
@@ -717,7 +719,7 @@ export class WseServer {
         conn.valid_stat = CLIENT_VALIDATING
         conn.identity = payload.identity
 
-        Object.assign(conn.meta, payload.meta || {})
+        if (payload.meta && typeof payload.meta === 'object') conn.meta = { ...conn.meta, ...payload.meta }
 
         if (typeof this._cra_generator === 'function') {
           this._cra_generator(
@@ -747,6 +749,7 @@ export class WseServer {
       }
 
       conn.challenge_response = payload
+      conn.valid_stat = CLIENT_VALIDATING
     }
 
     const accept = (cid, welcome_payload) => {
@@ -757,17 +760,27 @@ export class WseServer {
       this._refuse_connection(conn)
     }
 
-    this.identify({
-      identity: conn.identity,
-      meta: conn.meta,
-      accept,
-      refuse,
-      challenge:
-          typeof this._cra_generator === 'function'
-              ? { quest: conn.challenge_quest, response: conn.challenge_response }
-              : null,
-      id: conn.conn_id,
-    })
+    const fail = err => {
+      this.error.emit(err?.type === 'wse-error' ? err : new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }), conn)
+      refuse()
+    }
+
+    try {
+      const identified = this.identify({
+        identity: conn.identity,
+        meta: conn.meta,
+        accept,
+        refuse,
+        challenge:
+            typeof this._cra_generator === 'function'
+                ? { quest: conn.challenge_quest, response: conn.challenge_response }
+                : null,
+        id: conn.conn_id,
+      })
+      if (typeof identified?.then === 'function') identified.then(null, fail)
+    } catch (err) {
+      fail(err)
+    }
   }
 
   _refuse_connection (conn) {
@@ -783,6 +796,8 @@ export class WseServer {
    */
   _identify_connection (conn, cid, welcome_payload) {
     conn._clear_auth_timer()
+
+    if (conn.valid_stat === CLIENT_VALID || conn.ws_conn.readyState !== WebSocket.OPEN) return
 
     if (!cid) return this._refuse_connection(conn)
 
@@ -810,6 +825,7 @@ export class WseServer {
     // solution, so reading .meta off it lost the real meta — and threw outright
     // whenever the client solved with null.
     if (wasNewIdentity) this.joined.emit(client, conn.meta)
+    else this._routes.get(cid)?.link._join(cid, this._routes.get(cid).meta)
 
     this.connected.emit(conn)
   }
@@ -841,10 +857,56 @@ export class WseServer {
     // _conn_drop(), and the guard above has to stop that recursion before it
     // emits `left` a second time.
     this.clients.delete(id)
+    this.unforward(id, reason)
 
     if (client.conns.size) client.drop(reason)
 
     this.left.emit(client, code, String(reason))
+  }
+
+  /**
+   * Link a WseGate running on the other end of `port`, usually in a worker thread.
+   * @param {import('node:worker_threads').MessagePort} port
+   * @param {object} [options] - See WseLink.
+   * @returns {WseLink}
+   */
+  link (port, options) {
+    return new WseLink(this, port, options)
+  }
+
+  /**
+   * Hand an authenticated client to a gate: every message and call the server itself does not handle goes
+   * there, and the gate admits the client with `meta`. A client forwarded elsewhere leaves that gate first.
+   * @param {string} cid
+   * @param {WseLink} link
+   * @param {*} [meta]
+   */
+  forward (cid, link, meta) {
+    if (link.closed) throw new WseError(WSE_ERROR.LINK_CLOSED, { cid })
+    if (!this.clients.has(cid)) throw new WseError(WSE_ERROR.NO_CLIENT_CONNECTION, { cid })
+    const route = this._routes.get(cid)
+    if (route?.link === link) return
+    let copy
+    try {
+      copy = structuredClone(meta)
+    } catch (raw) {
+      throw new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { cid, raw })
+    }
+    if (route) this.unforward(cid)
+    this._routes.set(cid, { link, meta: copy })
+    link._join(cid, copy)
+  }
+
+  /**
+   * Take a client out of its gate. The gate gets `left` with `reason`; link.when.left does not fire.
+   * @param {string} cid
+   * @param {WSE_REASON|string} [reason]
+   */
+  unforward (cid, reason = WSE_REASON.BY_SERVER) {
+    const route = this._routes.get(cid)
+    if (!route) return
+    this._routes.delete(cid)
+    route.link._leave(cid, String(reason))
   }
 
   /**
@@ -923,7 +985,7 @@ export class WseIdentity {
     if (!conn) throw new WseError(WSE_ERROR.NO_CLIENT_CONNECTION, { id })
 
     conn._clear_auth_timer()
-    conn.ws_conn.removeAllListeners()
+    conn._unlisten()
 
     if (conn.readyState === WebSocket.CONNECTING || conn.readyState === WebSocket.OPEN) {
       conn.ws_conn.close(code, reason)

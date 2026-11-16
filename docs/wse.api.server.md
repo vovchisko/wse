@@ -8,7 +8,8 @@ Main server class for managing WebSocket connections.
 
 - `options.identify` - Authentication handler (function, required)
 - `options.connPerUser` - Max connections per user (number, default: 1)
-- `options.tO` - RPC timeout in seconds (number, default: 20)
+- `options.tO` - RPC timeout and auth deadline in milliseconds, 0 disables both (number, default: 20000).
+  `Infinity` and anything above 2^31-1 disable it too; a negative, `NaN` or non-number value throws `INVALID_TIMEOUT`
 - `options.protocol` - Message protocol (object, default: WseJSON)
 - `...options` - All other options passed to WebSocketServer (port, host, etc.)
 
@@ -32,7 +33,7 @@ Max connections per user (number)
 
 ### server.tO
 
-RPC timeout in seconds (number)
+RPC timeout and auth deadline in milliseconds (number)
 
 ## Methods
 
@@ -70,6 +71,18 @@ Disconnect user (all their devices)
 
 - `cid` - User ID (string)
 - `reason` - Close reason ([WSE_REASON](wse.api.constants.md), optional)
+
+### server.link(port, options)
+
+Link a [WseGate](wse.gate.md) on the other end of a `MessagePort` (WseLink)
+
+### server.forward(cid, link, meta)
+
+Route the client's unhandled messages and calls to a gate; the gate admits it with `meta`
+
+### server.unforward(cid, reason)
+
+Take the client out of its gate
 
 ### server.useChallenge(generator)
 

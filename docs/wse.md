@@ -34,6 +34,7 @@ Fastify/Express/HTTP-server [friendsly](wse.rpc.server-client.md) - can be easil
 
 ### Advanced
 
+- **[Gate](wse.gate.md)** - Serve clients from worker threads while the main thread keeps sockets and auth
 - **[Custom Protocols](wse.protocol.md)** - Implement custom message protocols
 - **[Constants](wse.api.constants.md)** - Error codes, statuses, and close reasons
 - **[HTTP Integration](wse.server.custom.md)** - Express/HTTP server integration

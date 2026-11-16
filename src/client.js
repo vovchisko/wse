@@ -11,7 +11,7 @@ import WS from 'isomorphic-ws'
 import { EventEmitter } from './emitter.js'
 
 import { WseJSON }                                     from './protocol.js'
-import { WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
+import { check_tO, tO_armed, WSE_ERROR, WSE_REASON, WSE_STATUS, WseError } from './common.js'
 import { RpcManager }                                  from './rpc-man.js'
 
 export class WseClient {
@@ -19,16 +19,16 @@ export class WseClient {
    * WseClient instance.
    * @param options
    * @param options.url - WS/WSS endpoint.
-   * @param {number} [options.tO] - Timeout in seconds for RP calls.
+   * @param {number} [options.tO=20000] - RP call timeout in milliseconds. 0 disables it.
    * @param {Boolean} [options.re] - Reconnect In cause of any of WseClient.re_on_codes[] code closure.
    * @param {WseJSON|object} [options.protocol] - Message processor.
    */
-  constructor ({ url, tO = 20, protocol, re = false, ...ws_options }) {
+  constructor ({ url, tO = 20000, protocol, re = false, ...ws_options }) {
     this.protocol = protocol || new WseJSON()
     this.url = url
     this.ws_options = ws_options
     this.reused = 0
-    this.tO = tO
+    this.tO = check_tO(tO)
 
     this.channel = new EventEmitter()
 
@@ -39,8 +39,12 @@ export class WseClient {
     this.error = new Signal()
     this.closed = new Signal()
     this.re = re
+
+    /** @type {number} Base reconnect delay in milliseconds; up to 1000ms of jitter is added on top */
     this.re_t0 = 1000
-    this.re_on_codes = [ 1005, 1006, 1011, 1012, 1013, 1014, 4000 ] // 4000 for jump
+
+    /** @type {number[]} WebSocket close codes that trigger a reconnect when `re` is on; 4000 is jump() */
+    this.re_on_codes = [ 1005, 1006, 1011, 1012, 1013, 1014, 4000 ]
 
     this._rpcManager = new RpcManager()
 
@@ -101,6 +105,10 @@ export class WseClient {
     this.status = WSE_STATUS.IDLE
     this.challenge_solver = null
     this._ws = null
+    this._re_timer = null
+    this._abort_connect = null
+    this._wait = null
+    this._closing = false
 
     // Last identity/meta used to authenticate. Kept on the instance so a reconnect
     // (re:true or jump's 4000 close) re-sends the credentials in effect now, not the
@@ -122,7 +130,7 @@ export class WseClient {
    * @throws {WseError}
    */
   connect (identity = '', meta = {}) {
-    if (this._ws) {
+    if (this._ws || this._re_timer) {
       const err = new WseError(WSE_ERROR.CLIENT_ALREADY_CONNECTED)
       Error.captureStackTrace?.(err, this.connect)
       throw err
@@ -130,17 +138,30 @@ export class WseClient {
 
     this._identity = identity
     this._meta = meta
+    this._closing = false
 
     this._update_status(WSE_STATUS.CONNECTING)
 
-    let _resolve, _reject
-    const _flushPromise = () => {
-      _resolve = null
-      _reject = null
+    let waiters = []
+    const resolveAll = value => {
+      const settle = waiters
+      waiters = []
+      for (const [ resolve ] of settle) resolve(value)
     }
+    const rejectAll = err => {
+      const settle = waiters
+      waiters = []
+      for (const [ , reject ] of settle) reject(err)
+    }
+    this._wait = () => new Promise((resolve, reject) => waiters.push([ resolve, reject ]))
+
+    let welcome_timer = null
+
+    this._abort_connect = reason => rejectAll(new WseError(WSE_ERROR.CONNECTION_CLOSED, { code: 1000, reason }))
 
     const handleOpen = () => {
-      this.send(this.protocol.internal_types.hi, { identity: this._identity, meta: this._meta })
+      this._send_frame(this.protocol.internal_types.hi, { identity: this._identity, meta: this._meta })
+      if (tO_armed(this.tO)) welcome_timer = setTimeout(() => this._ws?.close(1000, WSE_REASON.AUTH_TIMEOUT), this.tO)
       this.connected.emit()
     }
 
@@ -149,22 +170,25 @@ export class WseClient {
     }
 
     const handlePreMessage = message => {
-      const [ type, payload ] = this.protocol.unpack(message.data)
+      const frame = this._unpack(message.data)
+      if (!frame) return
+      const [ type, payload ] = frame
       if (type === this.protocol.internal_types.challenge) {
-        if (typeof this.challenge_solver === 'function') {
-          this.challenge_solver(payload, solution => {
-            this.send(this.protocol.internal_types.challenge, solution)
-          })
+        if (typeof this.challenge_solver !== 'function') {
+          const err = new WseError(WSE_ERROR.INVALID_CRA_HANDLER)
+          this.error.emit(err)
+          rejectAll(err)
+          this._ws.close(1000, WSE_REASON.NOT_AUTHORIZED)
           return
         }
+        this.challenge_solver(payload, solution => this._send_frame(this.protocol.internal_types.challenge, solution))
+        return
       }
       if (type === this.protocol.internal_types.welcome) {
-        if (_resolve) {
-          _resolve(payload)
-          _flushPromise()
-        }
+        clearTimeout(welcome_timer)
         this._ws.onmessage = handleMessage
         this._update_status(WSE_STATUS.READY)
+        resolveAll(payload)
         this.ready.emit(payload)
       }
     }
@@ -172,52 +196,58 @@ export class WseClient {
     const handleError = err => {
       this.error.emit(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
       // When reconnect is enabled, don't let connection errors bubble up as promise rejections
-      if (!this.re && _reject) {
-        _reject(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
-        _flushPromise()
-      }
+      if (!this.re) rejectAll(new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw: err }))
     }
 
     const handleClose = event => {
-      this.closed.emit(event.code, String(event.reason))
-      this._update_status(WSE_STATUS.OFFLINE)
-
+      clearTimeout(welcome_timer)
       this._wipe_ws()
+      this._update_status(WSE_STATUS.OFFLINE)
+      this.closed.emit(event.code, String(event.reason))
 
-      const will_retry = (this.re && this.re_on_codes.includes(event.code)) || event.code === 4000
+      const reconnected = this._ws !== null
+      const will_retry = !reconnected && !this._closing && ((this.re && this.re_on_codes.includes(event.code)) || event.code === 4000)
 
       // Settle whatever connect() is still awaiting. A close that won't be retried
       // is terminal — with re:true a refusal closes with 1000, which is not in
       // re_on_codes, so the promise used to stay pending forever.
-      if (!will_retry && _reject) {
+      if (!will_retry) {
         const reason = String(event.reason)
         const code = reason === WSE_REASON.NOT_AUTHORIZED ? WSE_ERROR.NOT_AUTHORIZED : WSE_ERROR.CONNECTION_CLOSED
-
-        _reject(new WseError(code, { code: event.code, reason }))
-        _flushPromise()
+        rejectAll(new WseError(code, { code: event.code, reason }))
       }
 
       if (will_retry) {
-        const in_s = event.code === 4000 ? 0 : this.re_t0 + Math.random() * 1000
+        const delay = event.code === 4000 ? 0 : this.re_t0 + Math.random() * 1000
         this._update_status(WSE_STATUS.RE_CONNECTING)
-        setTimeout(tryConnect, in_s)
+        this._re_timer = setTimeout(() => {
+          this._re_timer = null
+          tryConnect()
+        }, delay)
       }
     }
 
     const tryConnect = () => {
       this.reused++
-      this._ws = new WS(this.url, this.protocol.name, this.ws_options)
+      try {
+        this._ws = new WS(this.url, this.protocol.name, this.ws_options)
+      } catch (raw) {
+        const err = new WseError(WSE_ERROR.WS_CLIENT_ERROR, { raw })
+        this._update_status(WSE_STATUS.OFFLINE)
+        this.error.emit(err)
+        rejectAll(err)
+        return
+      }
+      this._ws.binaryType = 'arraybuffer'
       this._ws.onopen = handleOpen
       this._ws.onmessage = handlePreMessage
       this._ws.onerror = handleError
       this._ws.onclose = handleClose
     }
 
-    return new Promise((resolve, reject) => {
-      _resolve = resolve
-      _reject = reject // handleClose decides what is terminal; handleError still defers to `re`
-      tryConnect()
-    })
+    const connected = this._wait()
+    tryConnect()
+    return connected
   }
 
   _wipe_ws () {
@@ -272,7 +302,9 @@ export class WseClient {
    * @private
    */
   _process_msg (message) {
-    let [ type, payload, stamp ] = this.protocol.unpack(message.data)
+    const frame = this._unpack(message.data)
+    if (!frame) return
+    const [ type, payload, stamp ] = frame
 
     // Responses never fall through. An unmatched stamp (a reply that arrived after
     // its call timed out) must be dropped: answering it with response_error makes
@@ -287,14 +319,7 @@ export class WseClient {
       if (this._rpcManager.has(type)) {
         return this._handle_incoming_call(type, payload, stamp)
       } else {
-        // RPC not registered - send error response
-        this._ws.send(
-            this.protocol.pack({
-              type: this.protocol.internal_types.response_error,
-              payload: RpcManager.normalizeError(new WseError(WSE_ERROR.RP_NOT_REGISTERED), type),
-              stamp: stamp,
-            }),
-        )
+        this._ws.send(RpcManager.packError(this.protocol, new WseError(WSE_ERROR.RP_NOT_REGISTERED), stamp))
         return
       }
     }
@@ -309,22 +334,22 @@ export class WseClient {
     // The socket can die while an async handler is still running. There is nowhere
     // to reply to then, and reaching for a wiped this._ws would throw inside the
     // catch below, escaping as an unhandled rejection.
-    const reply = (response_type, response_payload) => {
+    const reply = frame => {
       if (!this._ws || this._ws.readyState !== WS.OPEN) return
-      this._ws.send(this.protocol.pack({ type: response_type, payload: response_payload, stamp }))
+      this._ws.send(frame)
     }
 
     const rp_wrap = async () => {
       const result = await procedure(payload)
-      reply(this.protocol.internal_types.response, result)
+      reply(this.protocol.pack({ type: this.protocol.internal_types.response, payload: result, stamp }))
     }
 
     rp_wrap().catch(err => {
-      reply(this.protocol.internal_types.response_error, RpcManager.normalizeError(err, type, payload))
+      reply(RpcManager.packError(this.protocol, err, stamp))
 
       this.error.emit(
           new WseError(WSE_ERROR.RP_EXECUTION_FAILED, {
-            type,
+            rp: type,
             payload,
             stamp,
             err,
@@ -340,7 +365,7 @@ export class WseClient {
    * @param {*} [payload]
    */
   send (type, payload) {
-    if (this._ws && this._ws.readyState === WS.OPEN) {
+    if (this._is_ready()) {
       this._ws.send(this.protocol.pack({ type, payload }))
     } else {
       const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
@@ -356,7 +381,38 @@ export class WseClient {
    * @param {WSE_REASON|string} [reason]
    */
   close (reason = WSE_REASON.BY_CLIENT) {
-    if (this._ws) this._ws.close(1000, reason)
+    this._closing = true
+    if (this._ws) return this._ws.close(1000, reason)
+    if (!this._re_timer) return
+    clearTimeout(this._re_timer)
+    this._re_timer = null
+    this._update_status(WSE_STATUS.OFFLINE)
+    this._abort_connect?.(reason)
+  }
+
+  _is_ready () {
+    return this.status === WSE_STATUS.READY && this._ws?.readyState === WS.OPEN
+  }
+
+  _send_frame (type, payload) {
+    if (this._ws?.readyState === WS.OPEN) this._ws.send(this.protocol.pack({ type, payload }))
+  }
+
+  /**
+   * Unpack a frame; a frame the protocol cannot read closes the connection with PROTOCOL_ERR.
+   * @returns {Array|null}
+   * @private
+   */
+  _unpack (data) {
+    try {
+      const frame = this.protocol.unpack(data)
+      if (!Array.isArray(frame)) throw new TypeError('unpack() must return [ type, payload, stamp ]')
+      return frame
+    } catch (err) {
+      this.error.emit(new WseError(WSE_ERROR.MESSAGE_PROCESSING_ERROR, { raw: err }))
+      this._ws?.close(1000, WSE_REASON.PROTOCOL_ERR)
+      return null
+    }
   }
 
   /**
@@ -382,11 +438,13 @@ export class WseClient {
     if (identity !== undefined) this._identity = identity
     if (meta !== undefined) this._meta = meta
 
-    if (this._ws) {
+    if (this._ws || this._re_timer) {
       this.url = newUrl
       this.ready.forget()
-      this._ws.close(4000, 'jump')
-      return this.ready.wait()
+      this._closing = false
+      const jumped = this._wait()
+      this._ws?.close(4000, 'jump')
+      return jumped
     } else {
       this.url = newUrl
       return this.connect(this._identity, this._meta)
@@ -418,10 +476,10 @@ export class WseClient {
    * }
    */
   async call (rp, payload) {
-    if (this._ws && this._ws.readyState === WS.OPEN) {
+    if (this._is_ready()) {
       return this._rpcManager.call(this.protocol, rp, payload, this.tO, data => this._ws.send(data), this.closed)
     } else {
-      const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY)
+      const err = new WseError(WSE_ERROR.CONNECTION_NOT_READY, { rp })
       Error.captureStackTrace?.(err, this.call)
       this.error.emit(err)
       throw err

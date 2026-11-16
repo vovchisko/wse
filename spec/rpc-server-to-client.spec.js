@@ -34,6 +34,7 @@ test('calling a procedure the client does not have rejects with RP_NOT_REGISTERE
 
   const err = await rejection(connection.call('no-such-rp'))
   assert.equal(err.code, WSE_ERROR.RP_NOT_REGISTERED)
+  assert.equal(err.details.rp, 'no-such-rp')
 })
 
 test('a vanilla Error on the client becomes RP_EXECUTION_FAILED with the procedure name', async t => {
@@ -85,7 +86,7 @@ test('a plain object thrown on the client arrives as details', async t => {
 
 test('a client that never answers times out after the server tO', async t => {
   const h = harness(t)
-  const { server, url } = await h.server({ tO: 0.1 })
+  const { server, url } = await h.server({ tO: 100 })
   const client = h.client(url)
 
   client.register('slow', () => new Promise(() => {}))
@@ -96,6 +97,27 @@ test('a client that never answers times out after the server tO', async t => {
 
   const err = await rejection(connection.call('slow', null))
   assert.equal(err.code, WSE_ERROR.RP_TIMEOUT)
+  assert.equal(err.details.rp, 'slow')
+})
+
+test('the client reports a failing procedure on its error signal', async t => {
+  const h = harness(t)
+  const { server, url } = await h.server()
+  const client = h.client(url)
+
+  client.register('boom', () => { throw new Error('nope') })
+
+  const conn = onceSignal(server.connected)
+  await client.connect(SECRET)
+  const [ connection ] = await conn
+
+  const error = onceSignal(client.error)
+  await rejection(connection.call('boom', { value: 1 }))
+
+  const [ err ] = await error
+  assert.equal(err.code, WSE_ERROR.RP_EXECUTION_FAILED)
+  assert.equal(err.details.rp, 'boom')
+  assert.match(err.message, /rp:boom/)
 })
 
 test('calls run in both directions over the same connection', async t => {
@@ -132,11 +154,12 @@ test('calling on a dropped connection rejects with CONNECTION_NOT_READY', async 
   const err = await rejection(connection.call('anything'))
 
   assert.equal(err.code, WSE_ERROR.CONNECTION_NOT_READY)
+  assert.equal(err.details.rp, 'anything')
 })
 
 test('an unrelated disconnect does not consume the call disconnect guard', async t => {
   const h = harness(t)
-  const { server, url } = await h.server({ tO: 5 }) // only the guard can settle this quickly
+  const { server, url } = await h.server({ tO: 5000 }) // only the guard can settle this quickly
   const a = h.client(url)
   const b = h.client(url)
 
@@ -149,13 +172,13 @@ test('an unrelated disconnect does not consume the call disconnect guard', async
   await b.connect(SECRET, { user_id: 'B' })
   await until(() => conns.has('A') && conns.has('B'), 'both connections to register')
 
-  const call = conns.get('A').call('never').then(() => 'resolved', err => err.code)
+  const call = conns.get('A').call('never').then(() => 'resolved', err => `${ err.code }:${ err.details.rp }`)
 
   b.close() // unrelated disconnect - must not disarm the guard on A
   await wait(100)
   a.close() // this is the one that has to settle the call
 
-  assert.equal(await Promise.race([ call, wait(1500).then(() => 'hung') ]), WSE_ERROR.RP_DISCONNECT)
+  assert.equal(await Promise.race([ call, wait(1500).then(() => 'hung') ]), `${ WSE_ERROR.RP_DISCONNECT }:never`)
 })
 
 test('a response from another connection cannot settle the call', async t => {
@@ -215,6 +238,26 @@ test('a structurally broken error response still settles the call', async t => {
   const [ conn ] = await onceSignal(server.connected)
 
   assert.equal(await outcome(conn.call('whatever'), 1000), 'rejected')
+})
+
+test('the caller names the procedure, not the peer', async t => {
+  const h = harness(t)
+  const { server, url } = await h.server()
+  const socket = h.socket(url)
+
+  socket.on('open', () => socket.send(JSON.stringify([ WSE_TYPES.hi, { identity: SECRET, meta: { user_id: 'U1' } } ])))
+  socket.on('message', raw => {
+    const [ type, , stamp ] = JSON.parse(raw)
+    if (type === WSE_TYPES.welcome) return
+    if (stamp) socket.send(JSON.stringify([ WSE_TYPES.response_error, { code: 'X', details: { rp: 'forged', n: 1 } }, stamp ]))
+  })
+
+  const [ conn ] = await onceSignal(server.connected)
+  const err = await rejection(conn.call('real'))
+
+  assert.equal(err.code, 'X')
+  assert.equal(err.details.rp, 'real')
+  assert.equal(err.details.n, 1)
 })
 
 test('the client survives its socket closing while an incoming call is in flight', async t => {

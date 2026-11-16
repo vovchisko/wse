@@ -36,15 +36,21 @@ try {
   await client.call('riskyOperation')
 } catch (error) {
   // Regular errors get normalized to RP_EXECUTION_FAILED
-  console.log('Code:', error.code)                    // 'RP_EXECUTION_FAILED'
-  console.log('Message:', error.message)              // 'Something went wrong'
-  console.log('Original error:', error.details)       // Error object
+  console.log('Code:', error.code)       // WSE_ERROR.RP_EXECUTION_FAILED ('wse.server.rp.failed')
+  console.log('Message:', error.message) // 'wse.server.rp.failed\n -> rp:riskyOperation\n -> Something went wrong'
+  console.log('Details:', error.details) // { origin: { name: 'Error', message: 'Something went wrong' }, rp: 'riskyOperation' }
 }
 ```
 
 ### RPC Call Error Details
 
-RPC errors include the RPC name and call details:
+Every rejected `call()` carries `details.rp`, set by the caller - including `RP_TIMEOUT`, `RP_DISCONNECT` and `CONNECTION_NOT_READY`.
+
+The error frame on the wire is a plain `{ code, details }`. The stack of the thrown error stays on the handler side (its
+`when.error`); only `origin.name` and `origin.message` cross. The caller adds `rp`; an `rp` the peer reports (a
+nested call it made failed) is kept as `peer_rp`. `details` that are not a plain object arrive as `{ value, rp }`. A
+non-string `code` becomes `RP_EXECUTION_FAILED`. If the protocol cannot pack the details, the frame falls back to the
+code with `origin` naming the pack failure.
 
 ```javascript
 // For JavaScript Error objects
@@ -52,10 +58,8 @@ try {
   await client.call('getUserData', { userId: 123 })
 } catch (error) {
   console.log('RPC name:', error.details.rp)     // 'getUserData'
-  console.log('Payload:', error.details.payload)  // { userId: 123 }
   console.log('Error name:', error.details.origin.name)    // 'Error'
   console.log('Error message:', error.details.origin.message) // Original message
-  console.log('Stack trace:', error.details.origin.stack)     // Stack trace
 }
 
 // For custom error objects (preserved directly)
@@ -69,11 +73,10 @@ try {
   console.log('Custom code:', error.details.code)     // 'INVALID_USER'
   console.log('User ID:', error.details.userId)       // 123
   console.log('RPC name:', error.details.rp)         // 'validateUser'
-  console.log('Payload:', error.details.payload)      // { userId: 123 }
   console.log('Origin:', error.details.origin)        // undefined (custom object preserved directly)
 }
 
-// For WseError objects (RPC context added)
+// For WseError objects (details kept as thrown)
 server.register('complexOp', () => {
   throw new WseError('CUSTOM_CODE', { field: 'value' })
 })
@@ -84,6 +87,5 @@ try {
   console.log('Code:', error.code)                 // 'CUSTOM_CODE'
   console.log('Field:', error.details.field)      // 'value'
   console.log('RPC name:', error.details.rp)     // 'complexOp'
-  console.log('Payload:', error.details.payload)  // { data: 'test' }
   console.log('Origin:', error.details.origin)    // undefined (already WseError)
 }
